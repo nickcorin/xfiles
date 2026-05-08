@@ -1,0 +1,53 @@
+from datetime import UTC, datetime
+
+from fastapi.testclient import TestClient
+
+from xfiles_api.app import create_app
+from xfiles_api.archive.models import DownloadedFile, ReleaseSnapshot
+
+
+def test_api_exposes_archive_without_storage_internals(tmp_path, monkeypatch):
+    monkeypatch.setenv("XFILES_DATABASE_PATH", str(tmp_path / "archive.sqlite3"))
+    monkeypatch.setenv("XFILES_STORAGE_DIR", str(tmp_path / "files"))
+
+    app = create_app()
+    with TestClient(app) as client:
+        context = app.state.context
+        stored = context.storage.save(
+            source_url="https://media.war.gov/ufo/case-01.txt",
+            content=b"infrared object over the range",
+        )
+        context.archive_store.save_release_snapshot(
+            ReleaseSnapshot(
+                source_url="https://www.war.gov/UFO/",
+                title="PURSUE",
+                release_label="Release 01",
+                page_hash="abc123",
+                fetched_at=datetime(2026, 5, 8, tzinfo=UTC),
+                records=[
+                    DownloadedFile(
+                        source_url="https://media.war.gov/ufo/case-01.txt",
+                        release_page_url="https://www.war.gov/UFO/",
+                        title="Case 01",
+                        original_filename="case-01.txt",
+                        media_type="text/plain",
+                        storage_path=str(stored.path),
+                        content_hash=stored.content_hash,
+                        downloaded_at=datetime(2026, 5, 8, tzinfo=UTC),
+                        source_metadata={"Agency": "AARO"},
+                        extracted_text="infrared object over the range",
+                    )
+                ],
+            )
+        )
+        records = client.get("/api/records", params={"q": "infrared"})
+        detail = client.get("/api/records/1")
+        file_response = client.get("/api/records/1/file")
+
+    assert records.status_code == 200
+    assert records.json()[0]["match_reasons"] == ["extracted text"]
+    assert detail.status_code == 200
+    assert detail.json()["source_url"] == "https://media.war.gov/ufo/case-01.txt"
+    assert "storage_path" not in detail.json()
+    assert file_response.status_code == 200
+    assert file_response.text == "infrared object over the range"

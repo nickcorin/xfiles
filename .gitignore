@@ -1,2 +1,16 @@
 AGENTS.md
 GOAL.md
+.env
+.env.local
+.env.*.local
+.venv/
+__pycache__/
+*.pyc
+node_modules/
+dist/
+.npm-cache/
+.playwright-mcp/
+.ruff_cache/
+.pytest_cache/
+.DS_Store
+data/

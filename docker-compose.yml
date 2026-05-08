@@ -1,0 +1,34 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    environment:
+      XFILES_DATABASE_PATH: /data/xfiles.sqlite3
+      XFILES_STORAGE_DIR: /data/files
+      XFILES_RELEASE_URL: https://www.war.gov/UFO/
+      XFILES_CORS_ORIGINS: '["http://localhost:5173","http://localhost:8080","http://127.0.0.1:5173","http://127.0.0.1:8080"]'
+      XFILES_LOG_LEVEL: info
+    ports:
+      - "8000:8000"
+    volumes:
+      - xfiles-data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health').read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: http://localhost:8000
+        VITE_MAPBOX_TOKEN: ${VITE_MAPBOX_TOKEN:-}
+    ports:
+      - "8080:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  xfiles-data:
