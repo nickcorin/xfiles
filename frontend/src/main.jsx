@@ -350,7 +350,7 @@ function FilePreview({ record, fileUrl }) {
   if (!record.media_type) {
     return (
       <a className="download-link" href={fileUrl}>
-        <Download size={18} /> Download preserved file
+        <Download size={18} /> Download
       </a>
     );
   }
@@ -365,7 +365,7 @@ function FilePreview({ record, fileUrl }) {
   }
   return (
     <a className="download-link" href={fileUrl}>
-      <Download size={18} /> Download preserved file
+      <Download size={18} /> Download
     </a>
   );
 }

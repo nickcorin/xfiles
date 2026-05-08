@@ -67,5 +67,6 @@ def test_api_exposes_archive_without_storage_internals(tmp_path, monkeypatch):
     assert detail.json()["source_url"] == "https://media.war.gov/ufo/case-01.txt"
     assert "storage_path" not in detail.json()
     assert file_response.status_code == 200
+    assert file_response.headers["content-disposition"].startswith("inline;")
     assert file_response.text == "infrared object over the range"
     assert failed_file_response.status_code == 409

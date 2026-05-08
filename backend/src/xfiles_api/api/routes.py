@@ -148,6 +148,7 @@ def record_file(
         path,
         media_type=record_data["media_type"],
         filename=record_data["original_filename"],
+        content_disposition_type="inline",
     )
 
 
