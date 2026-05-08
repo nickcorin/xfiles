@@ -1,13 +1,18 @@
 """Ingestion for public UAP release pages."""
 
+import csv
 import hashlib
+import logging
+import re
+from io import StringIO
 from urllib.parse import urljoin, urlparse
 
-import httpx
 from bs4 import BeautifulSoup
 from bs4.element import Tag
+from curl_cffi import requests
+from curl_cffi.requests import Response
 
-from xfiles_api.archive.models import DownloadedFile, ReleaseSnapshot, utc_now
+from xfiles_api.archive.models import ReleaseSnapshot, SourceFile, utc_now
 from xfiles_api.archive.storage import FileStorage
 from xfiles_api.archive.text import TextExtractor
 from xfiles_api.db.store import SQLiteArchiveStore
@@ -34,6 +39,8 @@ DOWNLOAD_EXTENSIONS = {
     ".zip",
 }
 
+logger = logging.getLogger(__name__)
+
 
 class ArchiveIngestionError(Exception):
     """Raised when a release page cannot be ingested."""
@@ -56,24 +63,17 @@ class ArchiveIngestor:
 
     def ingest(self, release_url: str) -> dict:
         """Fetch a release page, download linked files, and persist the snapshot."""
-        try:
-            with httpx.Client(follow_redirects=True, timeout=60) as client:
-                page_response = client.get(release_url)
-                page_response.raise_for_status()
-                snapshot = self._snapshot_from_page(
-                    client=client,
-                    release_url=release_url,
-                    page_html=page_response.text,
-                )
-        except httpx.HTTPError as error:
-            raise ArchiveIngestionError(f"fetch release page: {release_url}") from error
+        page_response = self._fetch(release_url, "fetch release page")
+        snapshot = self._snapshot_from_page(
+            release_url=release_url,
+            page_html=page_response.text,
+        )
 
         return self._store.save_release_snapshot(snapshot)
 
     def _snapshot_from_page(
         self,
         *,
-        client: httpx.Client,
         release_url: str,
         page_html: str,
     ) -> ReleaseSnapshot:
@@ -81,10 +81,14 @@ class ArchiveIngestor:
         title = self._page_title(soup)
         release_label = self._release_label(soup)
         page_hash = hashlib.sha256(page_html.encode("utf-8")).hexdigest()
-        records = [
-            self._download_record(client=client, release_url=release_url, link=link)
-            for link in self._download_links(soup, release_url)
-        ]
+        links = self._release_links(soup=soup, release_url=release_url, page_html=page_html)
+        records = []
+        for link in links:
+            try:
+                records.append(self._download_record(release_url=release_url, link=link))
+            except ArchiveIngestionError as error:
+                records.append(self._failed_record(release_url=release_url, link=link, error=error))
+                logger.warning("source file download failed", extra={"source_url": link[0]})
         return ReleaseSnapshot(
             source_url=release_url,
             title=title,
@@ -97,17 +101,11 @@ class ArchiveIngestor:
     def _download_record(
         self,
         *,
-        client: httpx.Client,
         release_url: str,
         link: tuple[str, str, dict[str, str]],
-    ) -> DownloadedFile:
+    ) -> SourceFile:
         source_url, title, metadata = link
-        try:
-            response = client.get(source_url)
-            response.raise_for_status()
-        except httpx.HTTPError as error:
-            raise ArchiveIngestionError(f"download source file: {source_url}") from error
-
+        response = self._fetch(source_url, "download source file")
         content = response.content
         if len(content) > self._max_download_bytes:
             msg = f"download exceeds configured limit: {source_url}"
@@ -116,6 +114,7 @@ class ArchiveIngestor:
         media_type = response.headers.get("content-type", "application/octet-stream").split(";")[0]
         filename = self._storage.filename_from_url(source_url)
         stored = self._storage.save(source_url=source_url, content=content)
+        downloaded_at = utc_now()
         try:
             extracted_text = self._text_extractor.extract(
                 content=content,
@@ -125,22 +124,117 @@ class ArchiveIngestor:
         except ValueError:
             extracted_text = ""
 
-        return DownloadedFile(
+        return SourceFile(
             source_url=source_url,
             release_page_url=release_url,
             title=title or filename,
             original_filename=filename,
+            source_metadata=metadata,
+            attempted_at=downloaded_at,
+            download_status="downloaded",
             media_type=media_type,
             storage_path=str(stored.path),
             content_hash=stored.content_hash,
-            downloaded_at=utc_now(),
-            source_metadata=metadata,
+            downloaded_at=downloaded_at,
             extracted_text=extracted_text,
             incident_date=metadata.get("Incident Date"),
             incident_location=metadata.get("Incident Location"),
         )
 
-    def _download_links(
+    def _failed_record(
+        self,
+        *,
+        release_url: str,
+        link: tuple[str, str, dict[str, str]],
+        error: ArchiveIngestionError,
+    ) -> SourceFile:
+        source_url, title, metadata = link
+        filename = self._storage.filename_from_url(source_url)
+        return SourceFile(
+            source_url=source_url,
+            release_page_url=release_url,
+            title=title or filename,
+            original_filename=filename,
+            source_metadata=metadata,
+            attempted_at=utc_now(),
+            download_status="failed",
+            failure_reason=str(error),
+            incident_date=metadata.get("Incident Date"),
+            incident_location=metadata.get("Incident Location"),
+        )
+
+    def _fetch(self, source_url: str, operation: str) -> Response:
+        try:
+            response = requests.get(
+                source_url,
+                allow_redirects=True,
+                impersonate="chrome",
+                timeout=60,
+            )
+            response.raise_for_status()
+        except requests.RequestsError as error:
+            raise ArchiveIngestionError(f"{operation}: {source_url}") from error
+        return response
+
+    def _release_links(
+        self,
+        *,
+        soup: BeautifulSoup,
+        release_url: str,
+        page_html: str,
+    ) -> list[tuple[str, str, dict[str, str]]]:
+        csv_links = self._csv_download_links(release_url=release_url, page_html=page_html)
+        if csv_links:
+            return csv_links
+        return self._anchor_download_links(soup, release_url)
+
+    def _csv_download_links(
+        self,
+        *,
+        release_url: str,
+        page_html: str,
+    ) -> list[tuple[str, str, dict[str, str]]]:
+        links: list[tuple[str, str, dict[str, str]]] = []
+        for csv_url in self._csv_urls(release_url=release_url, page_html=page_html):
+            response = self._fetch(csv_url, "fetch release csv")
+            reader = csv.DictReader(StringIO(response.content.decode("utf-8-sig")))
+            for row in reader:
+                source_url = self._row_value(row, "PDF | Image Link")
+                if not source_url:
+                    continue
+                title = self._row_value(row, "Title").replace("\n", " ").strip()
+                metadata = {
+                    key: self._row_value(row, key)
+                    for key in [
+                        "Agency",
+                        "Release Date",
+                        "Incident Date",
+                        "Incident Location",
+                        "Type",
+                        "Description Blurb",
+                        "Video Pairing",
+                        "PDF Pairing",
+                        "Redaction",
+                    ]
+                    if self._row_value(row, key)
+                }
+                links.append((urljoin(release_url, source_url), title, metadata))
+        return links
+
+    def _csv_urls(self, *, release_url: str, page_html: str) -> list[str]:
+        urls = []
+        for match in re.finditer(r"csvUrl\s*=\s*[\"'](?P<url>[^\"']+)[\"']", page_html):
+            urls.append(urljoin(release_url, match.group("url")))
+        ufo_urls = [url for url in urls if "/ufo/" in url.lower()]
+        return ufo_urls or urls
+
+    def _row_value(self, row: dict[str | None, str | list[str]], key: str) -> str:
+        value = row.get(key, "")
+        if isinstance(value, list):
+            return " ".join(value).strip()
+        return value.strip()
+
+    def _anchor_download_links(
         self,
         soup: BeautifulSoup,
         release_url: str,

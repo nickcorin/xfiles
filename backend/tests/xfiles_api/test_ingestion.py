@@ -16,6 +16,9 @@ class ArchiveHandler(BaseHTTPRequestHandler):
               <body>
                 <h1>Presidential Unsealing and Reporting System</h1>
                 <h2>Release 01</h2>
+                <script>
+                  const csvUrl = "/uap-csv.csv";
+                </script>
                 <table>
                   <tr>
                     <td>AARO</td>
@@ -31,6 +34,22 @@ class ArchiveHandler(BaseHTTPRequestHandler):
             """
             self.send_response(200)
             self.send_header("Content-Type", "text/html")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        if self.path == "/uap-csv.csv":
+            body = (
+                b"Redaction,Release Date,Title,Type,Video Pairing,PDF Pairing,"
+                b"Description Blurb,DVIDS Video ID,Video Title,Agency,Incident Date,"
+                b"Incident Location,PDF | Image Link,Modal Image\n"
+                b",May 8 2026,Case 01,PDF,,,Fixture release record.,,,FBI,"
+                b"September 2025,Western United States,/files/case-01.txt,\n"
+                b",May 8 2026,Case 02,PDF,,,Missing source record.,,,AARO,"
+                b"October 2025,Eastern United States,/files/missing.txt,\n"
+            )
+            self.send_response(200)
+            self.send_header("Content-Type", "text/csv")
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
@@ -64,15 +83,25 @@ def test_ingestor_downloads_files_and_preserves_page_source(tmp_path):
     ingestor = ArchiveIngestor(store=store, storage=storage, max_download_bytes=1_000_000)
 
     release = ingestor.ingest(release_url)
-    records = store.records(query="infrared")
+    records = store.records()
+    downloaded = store.records(query="infrared")
+    failed = store.records(query="missing")
 
     assert release["source_url"] == release_url
-    assert release["record_count"] == 1
-    assert records[0]["release_page_url"] == release_url
-    assert records[0]["source_url"] == f"http://127.0.0.1:{server.server_port}/files/case-01.txt"
-    assert records[0]["source_metadata"]["Agency"] == "AARO"
-    assert records[0]["incident_location"] == "Western United States"
-    assert records[0]["extracted_text"] == "infrared object near the western range"
+    assert release["record_count"] == 2
+    assert release["failure_count"] == 1
+    assert len(records) == 2
+    assert downloaded[0]["release_page_url"] == release_url
+    assert downloaded[0]["download_status"] == "downloaded"
+    assert downloaded[0]["source_url"] == f"http://127.0.0.1:{server.server_port}/files/case-01.txt"
+    assert downloaded[0]["source_metadata"]["Agency"] == "FBI"
+    assert downloaded[0]["source_metadata"]["Description Blurb"] == "Fixture release record."
+    assert downloaded[0]["incident_location"] == "Western United States"
+    assert downloaded[0]["extracted_text"] == "infrared object near the western range"
+    assert failed[0]["download_status"] == "failed"
+    assert failed[0]["failure_reason"]
+    assert failed[0]["storage_path"] is None
+    assert failed[0]["source_metadata"]["Agency"] == "AARO"
 
     database.close()
     server.shutdown()

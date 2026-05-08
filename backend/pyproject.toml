@@ -5,8 +5,8 @@ description = "API and ingestion service for the X-Files archive."
 requires-python = ">=3.12"
 dependencies = [
     "beautifulsoup4>=4.12.3",
+    "curl-cffi>=0.13.0",
     "fastapi>=0.115.6",
-    "httpx>=0.28.1",
     "pydantic>=2.10.4",
     "pydantic-settings>=2.7.0",
     "pypdf>=5.1.0",

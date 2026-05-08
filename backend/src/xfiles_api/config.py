@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
     log_level: str = "info"
-    max_download_bytes: int = 250_000_000
+    max_download_bytes: int = 1_000_000_000
 
     model_config = SettingsConfigDict(env_prefix="XFILES_", env_nested_delimiter="__")
 

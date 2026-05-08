@@ -62,6 +62,7 @@ def records(
     category: str | None = None,
     tag: str | None = None,
     review_state: str | None = None,
+    download_status: str | None = None,
     has_location: bool | None = None,
     limit: Annotated[int, Query(ge=1, le=250)] = 100,
     offset: Annotated[int, Query(ge=0)] = 0,
@@ -73,6 +74,7 @@ def records(
         category=category,
         tag=tag,
         review_state=review_state,
+        download_status=download_status,
         has_location=has_location,
         limit=limit,
         offset=offset,
@@ -137,6 +139,8 @@ def record_file(
 ) -> FileResponse:
     """Return the locally preserved source file for browser preview or download."""
     record_data = record(record_id, app_context)
+    if record_data["download_status"] != "downloaded" or record_data["storage_path"] is None:
+        raise HTTPException(status_code=409, detail="source file has not been downloaded")
     path = Path(record_data["storage_path"])
     if not path.exists():
         raise HTTPException(status_code=404, detail="stored file not found")

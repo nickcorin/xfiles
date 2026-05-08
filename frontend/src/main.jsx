@@ -39,6 +39,7 @@ function App() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
   const [reviewState, setReviewState] = useState("");
+  const [downloadStatus, setDownloadStatus] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -50,6 +51,7 @@ function App() {
       if (nextQuery) params.set("q", nextQuery);
       if (category) params.set("category", category);
       if (reviewState) params.set("review_state", reviewState);
+      if (downloadStatus) params.set("download_status", downloadStatus);
       const [releaseData, recordData, locationData] = await Promise.all([
         api("/api/releases"),
         api(`/api/records?${params.toString()}`),
@@ -142,6 +144,11 @@ function App() {
           <option value="reviewed">Reviewed</option>
           <option value="follow-up">Follow-up</option>
         </select>
+        <select value={downloadStatus} onChange={(event) => setDownloadStatus(event.target.value)}>
+          <option value="">All download states</option>
+          <option value="downloaded">Downloaded</option>
+          <option value="failed">Failed</option>
+        </select>
         <button onClick={() => loadArchive()} disabled={loading}>
           {loading ? <LoaderCircle className="spin" size={18} /> : <RefreshCw size={18} />}
           Refresh
@@ -188,7 +195,10 @@ function ArchiveView({ releases, records, selectedRecord, openRecord }) {
           releases.map((release) => (
             <article className="release-row" key={release.id}>
               <strong>{release.release_label}</strong>
-              <span>{release.record_count} records</span>
+              <span>
+                {release.record_count} records
+                {release.failure_count ? ` · ${release.failure_count} failed` : ""}
+              </span>
               <a href={release.source_url} target="_blank" rel="noreferrer">
                 Source <ExternalLink size={14} />
               </a>
@@ -213,9 +223,12 @@ function ArchiveView({ releases, records, selectedRecord, openRecord }) {
             >
               <span className="record-title">{record.title}</span>
               <span className="record-meta">
-                {record.release_label} · {record.media_type || "file"}
+                {record.release_label} · {record.media_type || "source listed"}
               </span>
               <span className="chips">
+                <em className={record.download_status === "failed" ? "danger" : ""}>
+                  {record.download_status}
+                </em>
                 {record.incident_location ? <em>{record.incident_location}</em> : null}
                 <em>{record.review_state}</em>
               </span>
@@ -278,15 +291,19 @@ function RecordDetail({ record }) {
         </a>
       </div>
 
-      <div className="provenance">
-        <span>SHA-256</span>
-        <code>{currentRecord.content_hash}</code>
-      </div>
+      {currentRecord.content_hash ? (
+        <div className="provenance">
+          <span>SHA-256</span>
+          <code>{currentRecord.content_hash}</code>
+        </div>
+      ) : null}
 
       <FilePreview record={currentRecord} fileUrl={fileUrl} />
 
       <section className="metadata-grid">
         <Meta label="Agency" value={currentRecord.source_metadata.Agency} />
+        <Meta label="Download status" value={currentRecord.download_status} />
+        <Meta label="Failure reason" value={currentRecord.failure_reason} />
         <Meta label="Incident date" value={currentRecord.incident_date} />
         <Meta label="Incident location" value={currentRecord.incident_location} />
         <Meta label="Location source" value={currentRecord.location_source} />
@@ -322,6 +339,21 @@ function RecordDetail({ record }) {
 }
 
 function FilePreview({ record, fileUrl }) {
+  if (record.download_status === "failed") {
+    return (
+      <div className="download-link unavailable">
+        <span>Download failed</span>
+        <small>{record.failure_reason || "The source record can be retried on the next ingest."}</small>
+      </div>
+    );
+  }
+  if (!record.media_type) {
+    return (
+      <a className="download-link" href={fileUrl}>
+        <Download size={18} /> Download preserved file
+      </a>
+    );
+  }
   if (record.media_type.startsWith("image/")) {
     return <img className="preview" src={fileUrl} alt={record.title} />;
   }

@@ -6,7 +6,7 @@ import sqlite3
 from collections.abc import Iterable
 from typing import Any
 
-from xfiles_api.archive.models import DownloadedFile, ReleaseSnapshot, utc_now
+from xfiles_api.archive.models import ReleaseSnapshot, SourceFile, utc_now
 from xfiles_api.db.database import SQLiteDatabase
 
 
@@ -21,7 +21,7 @@ class SQLiteArchiveStore:
         self._database = database
 
     def save_release_snapshot(self, snapshot: ReleaseSnapshot) -> dict[str, Any]:
-        """Persist a fetched release page and all downloadable records discovered on it."""
+        """Persist a fetched release page and all source records discovered on it."""
         try:
             with self._database.lock:
                 release = self._upsert_release(snapshot)
@@ -43,7 +43,13 @@ class SQLiteArchiveStore:
                 releases.release_label,
                 releases.page_hash,
                 releases.fetched_at,
-                COUNT(source_records.id) AS record_count
+                COUNT(DISTINCT source_records.id) AS record_count,
+                COUNT(
+                    DISTINCT CASE
+                        WHEN source_records.download_status = 'failed'
+                        THEN source_records.id
+                    END
+                ) AS failure_count
             FROM releases
             LEFT JOIN source_records ON source_records.release_id = releases.id
             GROUP BY releases.id
@@ -62,7 +68,13 @@ class SQLiteArchiveStore:
                 releases.release_label,
                 releases.page_hash,
                 releases.fetched_at,
-                COUNT(source_records.id) AS record_count
+                COUNT(DISTINCT source_records.id) AS record_count,
+                COUNT(
+                    DISTINCT CASE
+                        WHEN source_records.download_status = 'failed'
+                        THEN source_records.id
+                    END
+                ) AS failure_count
             FROM releases
             LEFT JOIN source_records ON source_records.release_id = releases.id
             WHERE releases.id = ?
@@ -81,6 +93,7 @@ class SQLiteArchiveStore:
         category: str | None = None,
         tag: str | None = None,
         review_state: str | None = None,
+        download_status: str | None = None,
         has_location: bool | None = None,
         limit: int = 100,
         offset: int = 0,
@@ -94,6 +107,9 @@ class SQLiteArchiveStore:
         if review_state:
             clauses.append("source_records.review_state = ?")
             params.append(review_state)
+        if download_status:
+            clauses.append("source_records.download_status = ?")
+            params.append(download_status)
         if has_location is True:
             clauses.append("source_records.latitude IS NOT NULL")
             clauses.append("source_records.longitude IS NOT NULL")
@@ -118,7 +134,8 @@ class SQLiteArchiveStore:
             FROM source_records
             JOIN releases ON releases.id = source_records.release_id
             {where}
-            ORDER BY source_records.downloaded_at DESC, source_records.id DESC
+            ORDER BY COALESCE(source_records.downloaded_at, source_records.attempted_at) DESC,
+                source_records.id DESC
             LIMIT ? OFFSET ?
         """
         rows = self._database.connection.execute(sql, [*params, limit, offset]).fetchall()
@@ -274,7 +291,7 @@ class SQLiteArchiveStore:
         ).fetchone()
         return dict(row)
 
-    def _upsert_record(self, release_id: int, record: DownloadedFile) -> None:
+    def _upsert_record(self, release_id: int, record: SourceFile) -> None:
         statement = """
             INSERT INTO source_records (
                 release_id,
@@ -282,10 +299,14 @@ class SQLiteArchiveStore:
                 release_page_url,
                 title,
                 original_filename,
+                download_status,
                 media_type,
                 storage_path,
                 content_hash,
                 downloaded_at,
+                failure_reason,
+                retry_count,
+                attempted_at,
                 source_metadata_json,
                 extracted_text,
                 incident_date,
@@ -294,15 +315,24 @@ class SQLiteArchiveStore:
                 longitude,
                 location_source
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(source_url) DO UPDATE SET
                 release_id = excluded.release_id,
+                release_page_url = excluded.release_page_url,
                 title = excluded.title,
                 original_filename = excluded.original_filename,
+                download_status = excluded.download_status,
                 media_type = excluded.media_type,
                 storage_path = excluded.storage_path,
                 content_hash = excluded.content_hash,
                 downloaded_at = excluded.downloaded_at,
+                failure_reason = excluded.failure_reason,
+                retry_count = CASE
+                    WHEN excluded.download_status = 'failed'
+                    THEN source_records.retry_count + 1
+                    ELSE source_records.retry_count
+                END,
+                attempted_at = excluded.attempted_at,
                 source_metadata_json = excluded.source_metadata_json,
                 extracted_text = excluded.extracted_text,
                 incident_date = COALESCE(source_records.incident_date, excluded.incident_date),
@@ -327,10 +357,14 @@ class SQLiteArchiveStore:
                 record.release_page_url,
                 record.title,
                 record.original_filename,
+                record.download_status,
                 record.media_type,
                 record.storage_path,
                 record.content_hash,
-                record.downloaded_at.isoformat(),
+                record.downloaded_at.isoformat() if record.downloaded_at is not None else None,
+                record.failure_reason,
+                record.retry_count,
+                record.attempted_at.isoformat(),
                 json.dumps(record.source_metadata, sort_keys=True),
                 record.extracted_text,
                 record.incident_date,

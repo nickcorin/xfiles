@@ -5,12 +5,16 @@ from io import BytesIO
 from bs4 import BeautifulSoup
 from pypdf import PdfReader
 
+MAX_EXTRACT_BYTES = 50_000_000
+
 
 class TextExtractor:
     """Extracts searchable text from supported source file types."""
 
     def extract(self, *, content: bytes, media_type: str, filename: str) -> str:
         """Return extracted text, or an empty string for unsupported binary files."""
+        if len(content) > MAX_EXTRACT_BYTES:
+            return ""
         lower_filename = filename.lower()
         if "pdf" in media_type or lower_filename.endswith(".pdf"):
             return self._extract_pdf(content)

@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from xfiles_api.archive.models import DownloadedFile, ReleaseSnapshot
+from xfiles_api.archive.models import ReleaseSnapshot, SourceFile
 from xfiles_api.archive.storage import FileStorage
 from xfiles_api.db.database import SQLiteDatabase
 from xfiles_api.db.store import SQLiteArchiveStore
@@ -24,34 +24,52 @@ def test_archive_store_preserves_sources_and_supports_search(tmp_path):
         page_hash="abc123",
         fetched_at=datetime(2026, 5, 8, tzinfo=UTC),
         records=[
-            DownloadedFile(
+            SourceFile(
                 source_url="https://media.war.gov/ufo/western-object.txt",
                 release_page_url="https://www.war.gov/UFO/",
                 title="Western object",
                 original_filename="western-object.txt",
+                source_metadata={"Agency": "AARO"},
+                attempted_at=datetime(2026, 5, 8, tzinfo=UTC),
+                download_status="downloaded",
                 media_type="text/plain",
                 storage_path=str(stored.path),
                 content_hash=stored.content_hash,
                 downloaded_at=datetime(2026, 5, 8, tzinfo=UTC),
-                source_metadata={"Agency": "AARO"},
                 extracted_text="unidentified object over the western United States",
                 incident_location="Western United States",
                 latitude=39.0,
                 longitude=-112.0,
                 location_source="source",
-            )
+            ),
+            SourceFile(
+                source_url="https://media.war.gov/ufo/missing-object.pdf",
+                release_page_url="https://www.war.gov/UFO/",
+                title="Missing object",
+                original_filename="missing-object.pdf",
+                source_metadata={"Agency": "AARO"},
+                attempted_at=datetime(2026, 5, 8, tzinfo=UTC),
+                download_status="failed",
+                failure_reason="download source file: 404",
+            ),
         ],
     )
 
     release = store.save_release_snapshot(snapshot)
     records = store.records(query="western object")
+    failed = store.records(download_status="failed")
     locations = store.locations()
 
-    assert release["record_count"] == 1
+    assert release["record_count"] == 2
+    assert release["failure_count"] == 1
     assert records[0]["source_url"] == "https://media.war.gov/ufo/western-object.txt"
     assert records[0]["release_page_url"] == "https://www.war.gov/UFO/"
+    assert records[0]["download_status"] == "downloaded"
     assert records[0]["content_hash"] == stored.content_hash
     assert "extracted text" in records[0]["match_reasons"]
+    assert failed[0]["source_url"] == "https://media.war.gov/ufo/missing-object.pdf"
+    assert failed[0]["storage_path"] is None
+    assert failed[0]["failure_reason"] == "download source file: 404"
     assert locations[0]["incident_location"] == "Western United States"
 
     updated = store.update_record_analysis(

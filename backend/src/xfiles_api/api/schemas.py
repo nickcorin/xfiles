@@ -21,6 +21,7 @@ class ReleaseResponse(BaseModel):
     page_hash: str
     fetched_at: str
     record_count: int
+    failure_count: int
 
 
 class RecordSummary(BaseModel):
@@ -33,9 +34,13 @@ class RecordSummary(BaseModel):
     release_page_url: str
     title: str
     original_filename: str
-    media_type: str
-    content_hash: str
-    downloaded_at: str
+    download_status: Literal["downloaded", "failed"]
+    media_type: str | None
+    content_hash: str | None
+    downloaded_at: str | None
+    failure_reason: str
+    retry_count: int
+    attempted_at: str
     source_metadata: dict[str, Any]
     review_state: str
     summary: str

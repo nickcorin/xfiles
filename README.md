@@ -30,7 +30,7 @@ Open:
 
 The preserved archive and SQLite database live in the `xfiles-data` Docker volume.
 
-If the upstream release page returns `403 Access Denied`, the API will return a `502` from `POST /api/ingest`. That means the current network path is being blocked by the upstream host; it does not discard existing archived records.
+If an individual source file cannot be downloaded, ingestion keeps the source record with `download_status=failed`, the original URL, release metadata, failure reason, and retry count so a later ingest can retry it.
 
 ## Development
 
@@ -66,7 +66,7 @@ The backend exposes product-level archive concepts instead of database internals
 - `GET /api/records/{record_id}/file`
 - `GET /api/locations`
 
-Every ingested file keeps its original source URL, release page URL, content hash, download timestamp, source metadata, and local storage path. Extracted text, tags, categories, review state, location data, summaries, and notes are stored as derived analysis data linked back to the source record.
+Every source record keeps its original source URL, release page URL, download status, source metadata, and retry state. Downloaded records also keep their content hash, download timestamp, and local storage path. Extracted text, tags, categories, review state, location data, summaries, and notes are stored as derived analysis data linked back to the source record.
 
 ## Deployment
 

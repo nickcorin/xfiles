@@ -283,6 +283,11 @@ h3 {
   font-style: normal;
 }
 
+.chips em.danger {
+  border-color: rgba(255, 126, 126, 0.44);
+  color: #ff9f9f;
+}
+
 .detail {
   min-width: 0;
   overflow: auto;
@@ -349,6 +354,17 @@ iframe.preview {
 .download-link {
   width: fit-content;
   margin-bottom: 14px;
+}
+
+.download-link.unavailable {
+  display: grid;
+  justify-items: start;
+  max-width: 100%;
+  cursor: default;
+}
+
+.download-link.unavailable small {
+  color: #aeb9aa;
 }
 
 .metadata-grid {
@@ -485,4 +501,3 @@ iframe.preview {
     grid-template-columns: 1fr;
   }
 }
-
