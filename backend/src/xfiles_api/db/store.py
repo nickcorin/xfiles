@@ -218,6 +218,32 @@ class SQLiteArchiveStore:
             for row in rows
         ]
 
+    def file_types(self) -> list[dict[str, Any]]:
+        """Return file type filters with at least one matching source record."""
+        options = [
+            ("image", "Images", self._file_type_count("image")),
+            ("pdf", "PDF", self._file_type_count("pdf")),
+            ("text", "Text", self._file_type_count("text")),
+            ("video", "Video", self._file_type_count("video")),
+            ("audio", "Audio", self._file_type_count("audio")),
+        ]
+        return [
+            {"value": value, "label": label, "count": count}
+            for value, label, count in options
+            if count > 0
+        ]
+
+    def _file_type_count(self, file_type: str) -> int:
+        clauses: list[str] = []
+        params: list[Any] = []
+        self._append_file_type_filter(clauses, params, file_type)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        row = self._database.connection.execute(
+            f"SELECT COUNT(*) AS count FROM source_records {where}",
+            params,
+        ).fetchone()
+        return int(row["count"])
+
     def backfill_location_estimates(self) -> None:
         """Fill known coordinate estimates for records that only have location text."""
         rows = self._database.connection.execute(

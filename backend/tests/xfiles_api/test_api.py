@@ -67,6 +67,7 @@ def test_api_exposes_archive_without_storage_internals(tmp_path, monkeypatch):
         )
         records = client.get("/api/records", params={"q": "infrared"})
         image_records = client.get("/api/records", params={"file_type": "image"})
+        file_types = client.get("/api/file-types")
         failed_records = client.get("/api/records", params={"download_status": "failed"})
         detail = client.get("/api/records/1")
         file_response = client.get("/api/records/1/file")
@@ -77,6 +78,12 @@ def test_api_exposes_archive_without_storage_internals(tmp_path, monkeypatch):
     assert image_records.status_code == 200
     assert len(image_records.json()) == 1
     assert image_records.json()[0]["media_type"] == "image/jpeg"
+    assert file_types.status_code == 200
+    assert file_types.json() == [
+        {"value": "image", "label": "Images", "count": 1},
+        {"value": "pdf", "label": "PDF", "count": 1},
+        {"value": "text", "label": "Text", "count": 1},
+    ]
     assert failed_records.status_code == 200
     assert failed_records.json()[0]["download_status"] == "failed"
     assert failed_records.json()[0]["failure_reason"] == "download source file: 404"

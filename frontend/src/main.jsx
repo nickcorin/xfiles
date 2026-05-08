@@ -35,6 +35,7 @@ function App() {
   const [releases, setReleases] = useState([]);
   const [records, setRecords] = useState([]);
   const [locations, setLocations] = useState([]);
+  const [fileTypes, setFileTypes] = useState([]);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
@@ -54,14 +55,19 @@ function App() {
       if (reviewState) params.set("review_state", reviewState);
       if (downloadStatus) params.set("download_status", downloadStatus);
       if (fileType) params.set("file_type", fileType);
-      const [releaseData, recordData, locationData] = await Promise.all([
+      const [releaseData, recordData, locationData, fileTypeData] = await Promise.all([
         api("/api/releases"),
         api(`/api/records?${params.toString()}`),
         api("/api/locations"),
+        api("/api/file-types"),
       ]);
       setReleases(releaseData);
       setRecords(recordData);
       setLocations(locationData);
+      setFileTypes(fileTypeData);
+      if (fileType && !fileTypeData.some((option) => option.value === fileType)) {
+        setFileType("");
+      }
       if (recordData.length === 0) {
         setSelectedRecord(null);
       } else if (selectedRecord == null || !recordData.some((record) => record.id === selectedRecord.id)) {
@@ -158,12 +164,11 @@ function App() {
         </select>
         <select value={fileType} onChange={(event) => setFileType(event.target.value)}>
           <option value="">All file types</option>
-          <option value="pdf">PDF</option>
-          <option value="image">Images</option>
-          <option value="video">Video</option>
-          <option value="audio">Audio</option>
-          <option value="text">Text</option>
-          <option value="failed">Failed</option>
+          {fileTypes.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
         </select>
         <button onClick={() => loadArchive()} disabled={loading}>
           {loading ? <LoaderCircle className="spin" size={18} /> : <RefreshCw size={18} />}

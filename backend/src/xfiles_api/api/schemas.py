@@ -87,6 +87,14 @@ class LocationRecord(BaseModel):
     categories: list[str]
 
 
+class FileTypeOption(BaseModel):
+    """A file type that exists in the archive."""
+
+    value: Literal["audio", "image", "pdf", "text", "video"]
+    label: str
+    count: int
+
+
 class RecordAnalysisUpdate(BaseModel):
     """Editable analysis fields for a source record."""
 

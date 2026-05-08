@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 
 from xfiles_api.api.schemas import (
+    FileTypeOption,
     HealthResponse,
     IngestRequest,
     LocationRecord,
@@ -81,6 +82,12 @@ def records(
         limit=limit,
         offset=offset,
     )
+
+
+@router.get("/file-types", response_model=list[FileTypeOption])
+def file_types(app_context: Annotated[AppContext, Depends(context)]) -> list[dict]:
+    """Return file type filters that exist in the archive."""
+    return app_context.archive_store.file_types()
 
 
 @router.get("/records/{record_id}", response_model=RecordDetail)
