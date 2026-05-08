@@ -12,6 +12,7 @@ from bs4.element import Tag
 from curl_cffi import requests
 from curl_cffi.requests import Response
 
+from xfiles_api.archive.geography import estimate_location
 from xfiles_api.archive.models import ReleaseSnapshot, SourceFile, utc_now
 from xfiles_api.archive.storage import FileStorage
 from xfiles_api.archive.text import TextExtractor
@@ -123,6 +124,8 @@ class ArchiveIngestor:
             )
         except ValueError:
             extracted_text = ""
+        location = metadata.get("Incident Location")
+        estimate = estimate_location(location)
 
         return SourceFile(
             source_url=source_url,
@@ -138,7 +141,10 @@ class ArchiveIngestor:
             downloaded_at=downloaded_at,
             extracted_text=extracted_text,
             incident_date=metadata.get("Incident Date"),
-            incident_location=metadata.get("Incident Location"),
+            incident_location=location,
+            latitude=estimate.latitude if estimate is not None else None,
+            longitude=estimate.longitude if estimate is not None else None,
+            location_source="inferred" if estimate is not None else None,
         )
 
     def _failed_record(
@@ -150,6 +156,8 @@ class ArchiveIngestor:
     ) -> SourceFile:
         source_url, title, metadata = link
         filename = self._storage.filename_from_url(source_url)
+        location = metadata.get("Incident Location")
+        estimate = estimate_location(location)
         return SourceFile(
             source_url=source_url,
             release_page_url=release_url,
@@ -160,7 +168,10 @@ class ArchiveIngestor:
             download_status="failed",
             failure_reason=str(error),
             incident_date=metadata.get("Incident Date"),
-            incident_location=metadata.get("Incident Location"),
+            incident_location=location,
+            latitude=estimate.latitude if estimate is not None else None,
+            longitude=estimate.longitude if estimate is not None else None,
+            location_source="inferred" if estimate is not None else None,
         )
 
     def _fetch(self, source_url: str, operation: str) -> Response:

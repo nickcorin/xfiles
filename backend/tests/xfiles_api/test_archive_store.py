@@ -98,3 +98,53 @@ def test_archive_store_preserves_sources_and_supports_search(tmp_path):
     assert store.record(records[0]["id"])["notes"][0]["body"] == "Human review note"
 
     database.close()
+
+
+def test_archive_store_backfills_known_location_estimates(tmp_path):
+    database = SQLiteDatabase(tmp_path / "archive.sqlite3")
+    storage = FileStorage(tmp_path / "files", 1_000_000)
+    storage.start()
+    database.start()
+    store = SQLiteArchiveStore(database)
+    stored = storage.save(
+        source_url="https://media.war.gov/ufo/mexico-cable.txt",
+        content=b"state department cable",
+    )
+
+    store.save_release_snapshot(
+        ReleaseSnapshot(
+            source_url="https://www.war.gov/UFO/",
+            title="PURSUE",
+            release_label="Release 01",
+            page_hash="abc123",
+            fetched_at=datetime(2026, 5, 8, tzinfo=UTC),
+            records=[
+                SourceFile(
+                    source_url="https://media.war.gov/ufo/mexico-cable.txt",
+                    release_page_url="https://www.war.gov/UFO/",
+                    title="Mexico cable",
+                    original_filename="mexico-cable.txt",
+                    source_metadata={"Agency": "State"},
+                    attempted_at=datetime(2026, 5, 8, tzinfo=UTC),
+                    download_status="downloaded",
+                    media_type="text/plain",
+                    storage_path=str(stored.path),
+                    content_hash=stored.content_hash,
+                    downloaded_at=datetime(2026, 5, 8, tzinfo=UTC),
+                    incident_location="Mexico",
+                )
+            ],
+        )
+    )
+
+    assert store.locations() == []
+
+    store.backfill_location_estimates()
+    locations = store.locations()
+
+    assert locations[0]["incident_location"] == "Mexico"
+    assert locations[0]["latitude"] == 23.6345
+    assert locations[0]["longitude"] == -102.5528
+    assert locations[0]["location_source"] == "inferred"
+
+    database.close()

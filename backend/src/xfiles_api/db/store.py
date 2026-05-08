@@ -6,6 +6,7 @@ import sqlite3
 from collections.abc import Iterable
 from typing import Any
 
+from xfiles_api.archive.geography import estimate_location
 from xfiles_api.archive.models import ReleaseSnapshot, SourceFile, utc_now
 from xfiles_api.db.database import SQLiteDatabase
 
@@ -94,6 +95,7 @@ class SQLiteArchiveStore:
         tag: str | None = None,
         review_state: str | None = None,
         download_status: str | None = None,
+        file_type: str | None = None,
         has_location: bool | None = None,
         limit: int = 100,
         offset: int = 0,
@@ -110,6 +112,8 @@ class SQLiteArchiveStore:
         if download_status:
             clauses.append("source_records.download_status = ?")
             params.append(download_status)
+        if file_type:
+            self._append_file_type_filter(clauses, params, file_type)
         if has_location is True:
             clauses.append("source_records.latitude IS NOT NULL")
             clauses.append("source_records.longitude IS NOT NULL")
@@ -140,6 +144,38 @@ class SQLiteArchiveStore:
         """
         rows = self._database.connection.execute(sql, [*params, limit, offset]).fetchall()
         return [self._record_from_row(row, query=query) for row in rows]
+
+    def _append_file_type_filter(
+        self,
+        clauses: list[str],
+        params: list[Any],
+        file_type: str,
+    ) -> None:
+        normalized = file_type.strip().lower()
+        if normalized == "pdf":
+            clauses.append(
+                "(source_records.media_type = ? OR source_records.original_filename LIKE ?)"
+            )
+            params.extend(["application/pdf", "%.pdf"])
+        elif normalized in {"image", "video", "audio"}:
+            clauses.append("source_records.media_type LIKE ?")
+            params.append(f"{normalized}/%")
+        elif normalized == "text":
+            clauses.append(
+                """
+                (
+                    source_records.media_type LIKE ?
+                    OR source_records.original_filename LIKE ?
+                    OR source_records.original_filename LIKE ?
+                    OR source_records.original_filename LIKE ?
+                )
+                """
+            )
+            params.extend(["text/%", "%.txt", "%.csv", "%.md"])
+        elif normalized == "failed":
+            clauses.append("source_records.download_status = 'failed'")
+        else:
+            clauses.append("1 = 0")
 
     def record(self, record_id: int) -> dict[str, Any]:
         """Return one source record with notes."""
@@ -181,6 +217,36 @@ class SQLiteArchiveStore:
             }
             for row in rows
         ]
+
+    def backfill_location_estimates(self) -> None:
+        """Fill known coordinate estimates for records that only have location text."""
+        rows = self._database.connection.execute(
+            """
+            SELECT id, incident_location
+            FROM source_records
+            WHERE incident_location IS NOT NULL
+                AND latitude IS NULL
+                AND longitude IS NULL
+                AND location_source IS NULL
+            """
+        ).fetchall()
+        with self._database.lock:
+            for row in rows:
+                estimate = estimate_location(row["incident_location"])
+                if estimate is None:
+                    continue
+                self._database.connection.execute(
+                    """
+                    UPDATE source_records
+                    SET latitude = ?,
+                        longitude = ?,
+                        location_source = 'inferred',
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                    """,
+                    (estimate.latitude, estimate.longitude, row["id"]),
+                )
+            self._database.connection.commit()
 
     def update_record_analysis(
         self,

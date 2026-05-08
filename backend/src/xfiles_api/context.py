@@ -30,6 +30,7 @@ class AppContext:
         """Initialize durable local resources."""
         self.storage.start()
         self.database.start()
+        self.archive_store.backfill_location_estimates()
 
     def close(self) -> None:
         """Close owned resources."""

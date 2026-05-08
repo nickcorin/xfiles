@@ -49,10 +49,24 @@ def test_api_exposes_archive_without_storage_internals(tmp_path, monkeypatch):
                         download_status="failed",
                         failure_reason="download source file: 404",
                     ),
+                    SourceFile(
+                        source_url="https://media.war.gov/ufo/photo.jpg",
+                        release_page_url="https://www.war.gov/UFO/",
+                        title="Photo",
+                        original_filename="photo.jpg",
+                        source_metadata={"Agency": "AARO"},
+                        attempted_at=datetime(2026, 5, 8, tzinfo=UTC),
+                        download_status="downloaded",
+                        media_type="image/jpeg",
+                        storage_path=str(stored.path),
+                        content_hash=stored.content_hash,
+                        downloaded_at=datetime(2026, 5, 8, tzinfo=UTC),
+                    ),
                 ],
             )
         )
         records = client.get("/api/records", params={"q": "infrared"})
+        image_records = client.get("/api/records", params={"file_type": "image"})
         failed_records = client.get("/api/records", params={"download_status": "failed"})
         detail = client.get("/api/records/1")
         file_response = client.get("/api/records/1/file")
@@ -60,6 +74,9 @@ def test_api_exposes_archive_without_storage_internals(tmp_path, monkeypatch):
 
     assert records.status_code == 200
     assert records.json()[0]["match_reasons"] == ["extracted text"]
+    assert image_records.status_code == 200
+    assert len(image_records.json()) == 1
+    assert image_records.json()[0]["media_type"] == "image/jpeg"
     assert failed_records.status_code == 200
     assert failed_records.json()[0]["download_status"] == "failed"
     assert failed_records.json()[0]["failure_reason"] == "download source file: 404"

@@ -40,6 +40,7 @@ function App() {
   const [category, setCategory] = useState("");
   const [reviewState, setReviewState] = useState("");
   const [downloadStatus, setDownloadStatus] = useState("");
+  const [fileType, setFileType] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -52,6 +53,7 @@ function App() {
       if (category) params.set("category", category);
       if (reviewState) params.set("review_state", reviewState);
       if (downloadStatus) params.set("download_status", downloadStatus);
+      if (fileType) params.set("file_type", fileType);
       const [releaseData, recordData, locationData] = await Promise.all([
         api("/api/releases"),
         api(`/api/records?${params.toString()}`),
@@ -60,7 +62,9 @@ function App() {
       setReleases(releaseData);
       setRecords(recordData);
       setLocations(locationData);
-      if (recordData.length > 0 && selectedRecord == null) {
+      if (recordData.length === 0) {
+        setSelectedRecord(null);
+      } else if (selectedRecord == null || !recordData.some((record) => record.id === selectedRecord.id)) {
         await openRecord(recordData[0].id);
       }
     } catch (error) {
@@ -90,8 +94,11 @@ function App() {
   }
 
   useEffect(() => {
-    loadArchive();
-  }, []);
+    const timeout = window.setTimeout(() => {
+      loadArchive(query);
+    }, query ? 250 : 0);
+    return () => window.clearTimeout(timeout);
+  }, [query, category, reviewState, downloadStatus, fileType]);
 
   const categories = useMemo(() => {
     const all = records.flatMap((record) => record.categories);
@@ -147,6 +154,15 @@ function App() {
         <select value={downloadStatus} onChange={(event) => setDownloadStatus(event.target.value)}>
           <option value="">All download states</option>
           <option value="downloaded">Downloaded</option>
+          <option value="failed">Failed</option>
+        </select>
+        <select value={fileType} onChange={(event) => setFileType(event.target.value)}>
+          <option value="">All file types</option>
+          <option value="pdf">PDF</option>
+          <option value="image">Images</option>
+          <option value="video">Video</option>
+          <option value="audio">Audio</option>
+          <option value="text">Text</option>
           <option value="failed">Failed</option>
         </select>
         <button onClick={() => loadArchive()} disabled={loading}>

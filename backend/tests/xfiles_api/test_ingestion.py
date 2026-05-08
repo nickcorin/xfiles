@@ -86,6 +86,7 @@ def test_ingestor_downloads_files_and_preserves_page_source(tmp_path):
     records = store.records()
     downloaded = store.records(query="infrared")
     failed = store.records(query="missing")
+    locations = store.locations()
 
     assert release["source_url"] == release_url
     assert release["record_count"] == 2
@@ -102,6 +103,13 @@ def test_ingestor_downloads_files_and_preserves_page_source(tmp_path):
     assert failed[0]["failure_reason"]
     assert failed[0]["storage_path"] is None
     assert failed[0]["source_metadata"]["Agency"] == "AARO"
+    assert {location["incident_location"] for location in locations} == {
+        "Eastern United States",
+        "Western United States",
+    }
+    assert {(location["latitude"], location["longitude"]) for location in locations} != {
+        (39.1, -112.3)
+    }
 
     database.close()
     server.shutdown()
