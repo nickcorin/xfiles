@@ -21,6 +21,7 @@ export function InteractiveGridBackground() {
     };
     const lure = { x: pointer.x, y: pointer.y };
     const craft = { x: pointer.x, y: pointer.y };
+    const ripples = [];
     let animationFrame = 0;
     let time = 0;
 
@@ -45,6 +46,16 @@ export function InteractiveGridBackground() {
       }
     }
 
+    function onPointerDown(event) {
+      ripples.push({
+        born: performance.now(),
+        opacity: 1,
+        radius: 0,
+        x: event.clientX,
+        y: event.clientY,
+      });
+    }
+
     function drawGlow(x, y, radius, opacity) {
       const gradient = context.createRadialGradient(x, y, 0, x, y, radius);
       gradient.addColorStop(0, `rgba(130, 230, 160, ${opacity})`);
@@ -56,29 +67,61 @@ export function InteractiveGridBackground() {
 
     function drawLattice(width, height) {
       const gap = 46;
+      const radius = 260;
+      const columns = [];
+      const rows = [];
       const points = [];
       context.lineWidth = 1;
       context.lineCap = "butt";
 
+      for (let x = -gap; x < width + gap * 2; x += gap) {
+        columns.push(x);
+      }
       for (let y = -gap; y < height + gap * 2; y += gap) {
+        rows.push(y);
+      }
+
+      for (let rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
         const row = [];
-        for (let x = -gap; x < width + gap * 2; x += gap) {
-          const baseX = x;
-          const baseY = y;
+        for (let columnIndex = 0; columnIndex < columns.length; columnIndex += 1) {
+          const baseX = columns[columnIndex];
+          const baseY = rows[rowIndex];
+          const edgeX = Math.min(columnIndex / 1.5, (columns.length - 1 - columnIndex) / 1.5, 1);
+          const edgeY = Math.min(rowIndex / 1.5, (rows.length - 1 - rowIndex) / 1.5, 1);
+          const edgeAnchor = edgeX * edgeX * edgeY * edgeY;
           const cursorDistance = Math.hypot(baseX - field.x, baseY - field.y);
           const cursorInfluence = field.active
-            ? Math.max(0, 1 - cursorDistance / 300) * field.strength
+            ? Math.max(0, 1 - cursorDistance / radius) * field.strength * edgeAnchor
             : 0;
           const pullX = field.active ? (field.x - baseX) / Math.max(cursorDistance, 1) : 0;
           const pullY = field.active ? (field.y - baseY) / Math.max(cursorDistance, 1) : 0;
           const distanceGate = Math.min(1, cursorDistance / 70);
           const compression = cursorInfluence * cursorInfluence;
           const displacement = compression * distanceGate * 26;
-          const energy = compression * (3 - 2 * cursorInfluence);
+          let rippleX = 0;
+          let rippleY = 0;
+          let rippleEnergy = 0;
+
+          for (const ripple of ripples) {
+            const xDistance = baseX - ripple.x;
+            const yDistance = baseY - ripple.y;
+            const rippleDistance = Math.hypot(xDistance, yDistance);
+            const waveDistance = rippleDistance - ripple.radius;
+            if (Math.abs(waveDistance) >= 55) continue;
+            const wave = (1 - Math.abs(waveDistance) / 55) * ripple.opacity * edgeAnchor;
+            const waveDirection = waveDistance < 0 ? -1 : 1;
+            const angle = Math.atan2(yDistance, xDistance);
+            const waveStrength = wave * 18;
+            rippleX -= Math.cos(angle) * waveStrength * waveDirection;
+            rippleY -= Math.sin(angle) * waveStrength * waveDirection;
+            rippleEnergy = Math.max(rippleEnergy, wave);
+          }
+
+          const energy = Math.min(compression * (3 - 2 * cursorInfluence) + rippleEnergy * 0.72, 1);
 
           row.push({
-            x: baseX + pullX * displacement,
-            y: baseY + pullY * displacement,
+            x: baseX + pullX * displacement + rippleX,
+            y: baseY + pullY * displacement + rippleY,
             energy,
           });
         }
@@ -113,6 +156,16 @@ export function InteractiveGridBackground() {
           context.arc(point.x, point.y, radius, 0, Math.PI * 2);
           context.fill();
         }
+      }
+    }
+
+    function drawRipples() {
+      for (const ripple of ripples) {
+        context.beginPath();
+        context.arc(ripple.x, ripple.y, ripple.radius, 0, Math.PI * 2);
+        context.lineWidth = 1.5;
+        context.strokeStyle = `rgba(130, 230, 160, ${0.28 * ripple.opacity})`;
+        context.stroke();
       }
     }
 
@@ -174,9 +227,20 @@ export function InteractiveGridBackground() {
       craft.x += (lure.x - craft.x) * chase;
       craft.y += (lure.y - craft.y) * chase;
 
+      const now = performance.now();
+      for (let index = ripples.length - 1; index >= 0; index -= 1) {
+        const age = (now - ripples[index].born) / 1000;
+        ripples[index].radius = Math.max(0, age * 400);
+        ripples[index].opacity = Math.max(0, 1 - age * 1.2);
+        if (ripples[index].opacity <= 0) {
+          ripples.splice(index, 1);
+        }
+      }
+
       context.clearRect(0, 0, width, height);
       drawGlow(craft.x, craft.y, 170, 0.07);
       drawLattice(width, height);
+      drawRipples();
       drawCraft(lure.x, lure.y);
 
       time += 0.016;
@@ -186,6 +250,7 @@ export function InteractiveGridBackground() {
     resize();
     window.addEventListener("resize", resize);
     window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerdown", onPointerDown);
     window.addEventListener("pointerout", onPointerLeave);
     animationFrame = window.requestAnimationFrame(draw);
 
@@ -193,6 +258,7 @@ export function InteractiveGridBackground() {
       window.cancelAnimationFrame(animationFrame);
       window.removeEventListener("resize", resize);
       window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerdown", onPointerDown);
       window.removeEventListener("pointerout", onPointerLeave);
     };
   }, []);
