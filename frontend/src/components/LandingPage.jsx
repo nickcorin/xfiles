@@ -1,4 +1,4 @@
-import { Archive, FileSearch, Globe2 } from "lucide-react";
+import { FileSearch, Globe2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -79,10 +79,6 @@ export function LandingPage({ releases, records, onNavigate }) {
               <Button size="lg" className="min-w-40" onClick={() => onNavigate("archive")}>
                 <FileSearch data-icon="inline-start" />
                 Browse documents
-              </Button>
-              <Button size="lg" variant="outline" className="min-w-36" onClick={() => onNavigate("archive")}>
-                <Archive data-icon="inline-start" />
-                View releases
               </Button>
               <Button size="lg" variant="ghost" className="min-w-32" onClick={() => onNavigate("globe")}>
                 <Globe2 data-icon="inline-start" />

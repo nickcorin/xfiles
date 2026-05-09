@@ -8,7 +8,6 @@ import { InteractiveGridBackground } from "@/components/InteractiveGridBackgroun
 import { LandingPage } from "@/components/LandingPage";
 import { ReaderPage } from "@/components/ReaderPage";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api } from "@/lib/api";
 
@@ -25,17 +24,6 @@ const emptyFilters = {
   download_status: "",
   file_type: "",
 };
-
-function metricCards(releases, records, locations) {
-  const totalRecords = releases.reduce((total, release) => total + release.record_count, 0);
-  const failedRecords = releases.reduce((total, release) => total + release.failure_count, 0);
-  return [
-    { label: "Released", value: totalRecords },
-    { label: "In view", value: records.length },
-    { label: "Mapped", value: locations.length },
-    { label: "Failed", value: failedRecords },
-  ];
-}
 
 export function App() {
   const [view, setView] = useState("home");
@@ -113,7 +101,6 @@ export function App() {
   }, [interfaceData]);
 
   const activeNavigation = interfaceData?.navigation.find((item) => item.value === view);
-  const stats = metricCards(releases, records, locations);
 
   if (!interfaceData) {
     return (
@@ -139,15 +126,15 @@ export function App() {
   }
 
   return (
-    <main className="mx-auto grid min-h-svh w-full max-w-[1840px] gap-4 p-3 lg:grid-cols-[280px_minmax(0,1fr)] md:p-5">
-      <aside className="flex flex-col gap-4 rounded-lg border bg-card/80 p-4 shadow-sm backdrop-blur lg:sticky lg:top-5 lg:h-[calc(100svh-2.5rem)]">
+    <main className="mx-auto grid min-h-svh w-full max-w-[1840px] gap-4 p-3 lg:grid-cols-[260px_minmax(0,1fr)] md:p-5">
+      <aside className="flex flex-col gap-4 rounded-lg border border-primary/20 bg-card/85 p-4 shadow-lg shadow-primary/5 ring-1 ring-primary/15 backdrop-blur-md lg:sticky lg:top-5 lg:h-[calc(100svh-2.5rem)]">
         <div className="flex flex-col gap-3">
           <div>
             <p className="text-xs font-medium uppercase text-muted-foreground">{interfaceData.brand.eyebrow}</p>
-            <h1 className="mt-1 font-heading text-3xl font-semibold">{interfaceData.brand.name}</h1>
+            <h1 className="mt-1 font-heading text-2xl font-semibold">{interfaceData.brand.name}</h1>
           </div>
           <Tabs value={view} onValueChange={setView}>
-            <TabsList className="grid h-auto grid-cols-1 gap-1 bg-muted/30 p-1">
+            <TabsList className="grid h-auto grid-cols-1 gap-1 bg-muted/40 p-1">
               {interfaceData.navigation.map((item) => {
                 const Icon = navigationIcons[item.value] || Database;
                 return (
@@ -162,26 +149,17 @@ export function App() {
         </div>
 
         <p className="text-sm leading-6 text-muted-foreground">{interfaceData.brand.description}</p>
-
-        <div className="grid grid-cols-2 gap-2">
-          {stats.map((item) => (
-            <Card key={item.label} size="sm">
-              <CardHeader>
-                <CardDescription>{item.label}</CardDescription>
-                <CardTitle className="text-xl">{item.value}</CardTitle>
-              </CardHeader>
-            </Card>
-          ))}
-        </div>
       </aside>
 
       <section className="flex min-w-0 flex-col gap-4">
-        <header className="flex flex-col gap-3 rounded-lg border bg-card/70 p-4 shadow-sm backdrop-blur lg:flex-row lg:items-end lg:justify-between">
+        <header className="flex flex-col gap-3 rounded-lg border border-primary/20 bg-card/85 p-4 shadow-lg shadow-primary/5 ring-1 ring-primary/15 backdrop-blur-md lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <div className="mb-2 flex flex-wrap gap-2">
-              {loading ? <Badge variant="secondary">Syncing</Badge> : <Badge variant="outline">Live API</Badge>}
-              {message ? <Badge variant="destructive">API notice</Badge> : null}
-            </div>
+            {loading || message ? (
+              <div className="mb-2 flex flex-wrap gap-2">
+                {loading ? <Badge variant="secondary">Syncing</Badge> : null}
+                {message ? <Badge variant="destructive">Notice</Badge> : null}
+              </div>
+            ) : null}
             <h2 className="font-heading text-2xl font-semibold md:text-3xl">
               {activeNavigation?.label}
             </h2>

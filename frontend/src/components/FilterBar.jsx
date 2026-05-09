@@ -46,7 +46,7 @@ export function FilterBar({
   filterGroups,
 }) {
   return (
-    <section className="grid gap-3 rounded-lg border bg-card/80 p-3 shadow-sm backdrop-blur md:grid-cols-[minmax(280px,1fr)_repeat(4,auto)]">
+    <section className="grid gap-3 rounded-lg border border-primary/20 bg-card/85 p-3 shadow-lg shadow-primary/5 ring-1 ring-primary/15 backdrop-blur-md md:grid-cols-[minmax(280px,1fr)_repeat(4,auto)]">
       <label className="relative flex items-center">
         <Search className="pointer-events-none absolute left-3 size-4 text-muted-foreground" />
         <Input

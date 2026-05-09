@@ -64,7 +64,7 @@ export function GlobePage({ locations, onOpenRecord }) {
 
   return (
     <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-      <div className="overflow-hidden rounded-lg border bg-card/70">
+      <div className="overflow-hidden rounded-lg border border-primary/20 bg-card/85 shadow-lg shadow-primary/5 ring-1 ring-primary/15 backdrop-blur-md">
         {MAPBOX_TOKEN ? (
           <div className="h-[calc(100vh-15rem)] min-h-[560px] w-full" ref={containerRef} />
         ) : (
@@ -77,7 +77,7 @@ export function GlobePage({ locations, onOpenRecord }) {
         )}
       </div>
 
-      <aside className="rounded-lg border bg-card/70 p-3">
+      <aside className="rounded-lg border border-primary/20 bg-card/85 p-3 shadow-lg shadow-primary/5 ring-1 ring-primary/15 backdrop-blur-md">
         <div className="flex items-center justify-between gap-3 px-1 pb-3">
           <div>
             <h2 className="font-heading text-lg font-medium">Locations</h2>

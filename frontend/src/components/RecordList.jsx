@@ -12,13 +12,13 @@ export function RecordList({ records, selectedRecord, onSelect }) {
   }
 
   return (
-    <div className="h-[calc(100vh-17rem)] min-h-[420px] overflow-y-auto pr-3">
+    <div className="h-[calc(100vh-20rem)] min-h-[420px] overflow-y-auto pr-3">
       <div className="flex flex-col gap-2">
         {records.map((record) => (
           <button
             className={cn(
-              "group grid gap-2 rounded-lg border bg-card p-3 text-left text-card-foreground transition hover:border-primary/40 hover:bg-accent/60",
-              selectedRecord?.id === record.id && "border-primary/60 bg-primary/10"
+              "group grid gap-2 rounded-lg border border-border/80 bg-card/85 p-3 text-left text-card-foreground shadow-sm transition hover:-translate-y-0.5 hover:border-primary/40 hover:bg-card hover:shadow-md hover:shadow-primary/10",
+              selectedRecord?.id === record.id && "border-primary/60 bg-primary/10 shadow-primary/10"
             )}
             key={record.id}
             onClick={() => onSelect(record.id)}

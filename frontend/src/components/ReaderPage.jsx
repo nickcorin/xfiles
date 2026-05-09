@@ -47,7 +47,7 @@ export function ReaderPage({ records, selectedRecord, selectedIndex, onOpenRecor
 
   if (!currentRecord) {
     return (
-      <section className="grid min-h-[56vh] place-items-center rounded-lg border border-dashed bg-card/60 p-8 text-center">
+      <section className="grid min-h-[56vh] place-items-center rounded-lg border border-dashed border-primary/20 bg-card/85 p-8 text-center shadow-lg shadow-primary/5 ring-1 ring-primary/15 backdrop-blur-md">
         <div>
           <h2 className="font-heading text-2xl font-medium">No document selected</h2>
           <p className="mt-2 text-sm text-muted-foreground">Choose a record from the archive to open the reader.</p>
@@ -61,7 +61,7 @@ export function ReaderPage({ records, selectedRecord, selectedIndex, onOpenRecor
 
   return (
     <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-      <div className="min-w-0 rounded-lg border bg-card/70 p-3">
+      <div className="min-w-0 rounded-lg border border-primary/20 bg-card/85 p-3 shadow-lg shadow-primary/5 ring-1 ring-primary/15 backdrop-blur-md">
         <div className="flex flex-wrap items-start justify-between gap-3 p-1 pb-3">
           <div className="min-w-0">
             <div className="mb-2 flex flex-wrap gap-2">
@@ -100,7 +100,7 @@ export function ReaderPage({ records, selectedRecord, selectedIndex, onOpenRecor
       </div>
 
       <aside className="flex min-w-0 flex-col gap-4">
-        <section className="rounded-lg border bg-card/70 p-4">
+        <section className="rounded-lg border border-primary/20 bg-card/85 p-4 shadow-lg shadow-primary/5 ring-1 ring-primary/15 backdrop-blur-md">
           <div className="flex items-center justify-between gap-2">
             <h3 className="font-heading text-lg font-medium">Source</h3>
             <Button asChild variant="outline" size="sm">
@@ -118,7 +118,7 @@ export function ReaderPage({ records, selectedRecord, selectedIndex, onOpenRecor
           </dl>
         </section>
 
-        <section className="rounded-lg border bg-card/70 p-4">
+        <section className="rounded-lg border border-primary/20 bg-card/85 p-4 shadow-lg shadow-primary/5 ring-1 ring-primary/15 backdrop-blur-md">
           <h3 className="font-heading text-lg font-medium">Extracted text</h3>
           <ScrollArea className="mt-3 h-52 rounded-lg border bg-muted/20 p-3">
             <pre className="whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
@@ -127,7 +127,7 @@ export function ReaderPage({ records, selectedRecord, selectedIndex, onOpenRecor
           </ScrollArea>
         </section>
 
-        <section className="rounded-lg border bg-card/70 p-4">
+        <section className="rounded-lg border border-primary/20 bg-card/85 p-4 shadow-lg shadow-primary/5 ring-1 ring-primary/15 backdrop-blur-md">
           <h3 className="font-heading text-lg font-medium">Notes</h3>
           <div className="mt-3 flex flex-col gap-2">
             <Textarea value={note} onChange={(event) => setNote(event.target.value)} placeholder="Add an analysis note" />
