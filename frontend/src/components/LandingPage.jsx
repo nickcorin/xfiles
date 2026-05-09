@@ -3,6 +3,26 @@ import { Archive, FileSearch, Globe2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
+function formatReleaseDate(value) {
+  if (!value) return "Pending";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+}
+
+function latestReleaseDate(latestRelease, records) {
+  if (!latestRelease) return "Pending";
+
+  const releaseRecord = records.find((record) => record.release_id === latestRelease.id);
+  return formatReleaseDate(releaseRecord?.source_metadata?.["Release Date"] || latestRelease.fetched_at);
+}
+
 function releaseStats(releases, records) {
   const totalRecords = releases.reduce((total, release) => total + release.record_count, 0) || records.length;
   const latestRelease = releases[0];
@@ -10,7 +30,7 @@ function releaseStats(releases, records) {
   return [
     { label: "Releases", value: releases.length },
     { label: "Released files", value: totalRecords },
-    { label: "Latest release", value: latestRelease?.release_label || "Pending" },
+    { label: "Latest release", value: latestReleaseDate(latestRelease, records) },
   ];
 }
 
