@@ -45,7 +45,7 @@ export function LandingPage({ releases, records, onNavigate }) {
             <div className="flex max-w-3xl flex-col items-center gap-5">
               <p className="text-sm font-medium uppercase text-muted-foreground">UAP release archive</p>
               <h2 className="max-w-3xl font-heading text-5xl font-semibold leading-none md:text-7xl">
-                The files are open.
+                The truth is out there.
               </h2>
               <p className="max-w-2xl text-base leading-7 text-muted-foreground md:text-lg">
                 Browse, search, and map the public release files.
