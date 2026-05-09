@@ -96,11 +96,8 @@
     min-width: 320px;
     min-height: 100vh;
     background:
-      linear-gradient(oklch(0.76 0.15 147 / 0.035) 1px, transparent 1px),
-      linear-gradient(90deg, oklch(0.76 0.15 147 / 0.025) 1px, transparent 1px),
       radial-gradient(circle at top left, oklch(0.76 0.15 147 / 0.12), transparent 32rem),
       var(--background);
-    background-size: 36px 36px, 36px 36px, auto, auto;
   }
 
   html {
