@@ -43,13 +43,21 @@ export function LandingPage({ releases, records, onNavigate }) {
         <div className="flex flex-1 items-center justify-center py-16">
           <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-9 text-center">
             <div className="flex max-w-3xl flex-col items-center gap-5">
-              <p className="text-sm font-medium uppercase text-muted-foreground">War.gov/UFO archive</p>
+              <p className="text-sm font-medium uppercase text-muted-foreground">UAP release archive</p>
               <h2 className="max-w-3xl font-heading text-5xl font-semibold leading-none md:text-7xl">
                 The files are open.
               </h2>
               <p className="max-w-2xl text-base leading-7 text-muted-foreground md:text-lg">
-                Browse, search, and map the public release files without losing their original source links.
+                Browse, search, and map the public release files.
               </p>
+              <a
+                className="text-sm font-medium text-primary underline-offset-4 transition-colors hover:text-primary/80 hover:underline"
+                href="https://www.war.gov/UFO/"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Source: war.gov/UFO
+              </a>
             </div>
 
             <div className="grid w-full max-w-3xl gap-3 sm:grid-cols-3">
