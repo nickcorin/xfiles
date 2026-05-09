@@ -25,8 +25,26 @@ const emptyFilters = {
   file_type: "",
 };
 
+const viewPaths = {
+  home: "/",
+  archive: "/documents",
+  reader: "/reader",
+  globe: "/globe",
+};
+
+const pathViews = {
+  "/": "home",
+  "/documents": "archive",
+  "/reader": "reader",
+  "/globe": "globe",
+};
+
+function viewFromLocation() {
+  return pathViews[window.location.pathname] || "home";
+}
+
 export function App() {
-  const [view, setView] = useState("home");
+  const [view, setView] = useState(() => viewFromLocation());
   const [interfaceData, setInterfaceData] = useState(null);
   const [releases, setReleases] = useState([]);
   const [records, setRecords] = useState([]);
@@ -40,7 +58,14 @@ export function App() {
   async function openRecord(recordId, nextView = "reader") {
     const detail = await api(`/api/records/${recordId}`);
     setSelectedRecord(detail);
+    navigate(nextView);
+  }
+
+  function navigate(nextView) {
+    const nextPath = viewPaths[nextView] || viewPaths.home;
     setView(nextView);
+    if (window.location.pathname === nextPath) return;
+    window.history.pushState({ view: nextView }, "", nextPath);
   }
 
   async function loadArchive(nextQuery = query) {
@@ -89,6 +114,18 @@ export function App() {
     return () => window.clearTimeout(timeout);
   }, [query, filters]);
 
+  useEffect(() => {
+    const initialView = viewFromLocation();
+    window.history.replaceState({ view: initialView }, "", viewPaths[initialView]);
+
+    function handlePopState() {
+      setView(viewFromLocation());
+    }
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
   const selectedIndex = useMemo(
     () => records.findIndex((record) => record.id === selectedRecord?.id),
     [records, selectedRecord]
@@ -119,7 +156,7 @@ export function App() {
         <LandingPage
           releases={releases}
           records={records}
-          onNavigate={setView}
+          onNavigate={navigate}
         />
       </>
     );
@@ -133,7 +170,7 @@ export function App() {
             <p className="text-xs font-medium uppercase text-muted-foreground">{interfaceData.brand.eyebrow}</p>
             <h1 className="mt-1 font-heading text-2xl font-semibold">{interfaceData.brand.name}</h1>
           </div>
-          <Tabs value={view} onValueChange={setView}>
+          <Tabs value={view} onValueChange={navigate}>
             <TabsList className="grid h-auto grid-cols-1 gap-1 bg-muted/40 p-1">
               {interfaceData.navigation.map((item) => {
                 const Icon = navigationIcons[item.value] || Database;
