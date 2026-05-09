@@ -39,12 +39,12 @@ export function InteractiveGridBackground() {
       }
     }
 
-    function pulse(distance, radius) {
-      return Math.max(0, 1 - distance / radius) ** 2;
+    function seed(x, y) {
+      return Math.abs(Math.sin(x * 12.9898 + y * 78.233) * 43758.5453 % 1);
     }
 
-    function seed(x, y) {
-      return Math.sin(x * 12.9898 + y * 78.233) * 43758.5453 % 1;
+    function influence(distance, radius) {
+      return Math.max(0, 1 - distance / radius) ** 2;
     }
 
     function drawGlow(x, y, radius, opacity) {
@@ -56,46 +56,68 @@ export function InteractiveGridBackground() {
       context.fillRect(x - radius, y - radius, radius * 2, radius * 2);
     }
 
-    function drawGrid(width, height) {
-      const cell = 42;
+    function drawLattice(width, height) {
+      const gap = 46;
+      const points = [];
       context.lineWidth = 1;
 
-      for (let x = -cell; x < width + cell; x += cell) {
-        for (let y = -cell; y < height + cell; y += cell) {
-          const centerX = x + cell / 2;
-          const centerY = y + cell / 2;
-          const cursorDistance = Math.hypot(centerX - pointer.x, centerY - pointer.y);
-          const craftDistance = Math.hypot(centerX - craft.x, centerY - craft.y);
-          const cursorPulse = pointer.active ? pulse(cursorDistance, 320) : 0;
-          const craftPulse = pulse(craftDistance, 210);
-          const randomness = Math.abs(seed(x, y));
-          const ripple = pointer.active
-            ? Math.sin(time * 2.2 - cursorDistance * 0.035 + randomness * 4)
-            : 0;
-          const lift = Math.max(0, cursorPulse * (0.24 + ripple * 0.08) + craftPulse * 0.08);
-          const directionX = pointer.active ? (centerX - pointer.x) / Math.max(cursorDistance, 1) : 0;
-          const directionY = pointer.active ? (centerY - pointer.y) / Math.max(cursorDistance, 1) : 0;
-          const offset = cursorPulse * 9;
-          const inset = 2 + cursorPulse * 6;
+      for (let x = -gap; x < width + gap * 2; x += gap) {
+        for (let y = -gap; y < height + gap * 2; y += gap) {
+          const random = seed(x, y);
+          const baseX = x + (random - 0.5) * 7;
+          const baseY = y + (seed(y, x) - 0.5) * 7;
+          const cursorDistance = Math.hypot(baseX - pointer.x, baseY - pointer.y);
+          const craftDistance = Math.hypot(baseX - craft.x, baseY - craft.y);
+          const cursorInfluence = pointer.active ? influence(cursorDistance, 310) : 0;
+          const craftInfluence = influence(craftDistance, 180) * 0.4;
+          const wave = Math.sin(time * 1.4 + random * 8 + cursorDistance * 0.018) * 0.5 + 0.5;
+          const pushX = pointer.active ? (baseX - pointer.x) / Math.max(cursorDistance, 1) : 0;
+          const pushY = pointer.active ? (baseY - pointer.y) / Math.max(cursorDistance, 1) : 0;
+          const driftX = Math.sin(time * 0.45 + random * 12) * 1.4;
+          const driftY = Math.cos(time * 0.38 + random * 10) * 1.4;
+          const displacement = cursorInfluence * (18 + random * 18);
 
-          if (lift > 0.012) {
-            context.fillStyle = `rgba(130, 230, 160, ${lift * 0.35})`;
-            context.fillRect(
-              x + inset + directionX * offset,
-              y + inset + directionY * offset,
-              cell - inset * 2,
-              cell - inset * 2
-            );
-          }
-
-          context.strokeStyle = `rgba(130, 230, 160, ${0.032 + lift * 0.72})`;
-          context.strokeRect(
-            x + directionX * offset,
-            y + directionY * offset,
-            cell,
-            cell
-          );
+          points.push({
+            baseX,
+            baseY,
+            x: baseX + pushX * displacement + driftX,
+            y: baseY + pushY * displacement + driftY,
+            energy: cursorInfluence * (0.68 + wave * 0.32) + craftInfluence,
+            random,
+          });
         }
+      }
+
+      for (const point of points) {
+        const right = points.find(
+          (candidate) =>
+            Math.abs(candidate.baseY - point.baseY) < gap * 0.45 &&
+            candidate.baseX > point.baseX &&
+            candidate.baseX - point.baseX < gap * 1.4
+        );
+        const down = points.find(
+          (candidate) =>
+            Math.abs(candidate.baseX - point.baseX) < gap * 0.45 &&
+            candidate.baseY > point.baseY &&
+            candidate.baseY - point.baseY < gap * 1.4
+        );
+        for (const neighbor of [right, down]) {
+          if (!neighbor) continue;
+          const alpha = 0.035 + Math.min(point.energy + neighbor.energy, 1) * 0.18;
+          context.strokeStyle = `rgba(130, 230, 160, ${alpha})`;
+          context.beginPath();
+          context.moveTo(point.x, point.y);
+          context.lineTo(neighbor.x, neighbor.y);
+          context.stroke();
+        }
+      }
+
+      for (const point of points) {
+        const radius = 1.1 + point.energy * 2.4;
+        context.fillStyle = `rgba(130, 230, 160, ${0.16 + point.energy * 0.48})`;
+        context.beginPath();
+        context.arc(point.x, point.y, radius, 0, Math.PI * 2);
+        context.fill();
       }
     }
 
@@ -154,7 +176,7 @@ export function InteractiveGridBackground() {
         drawGlow(pointer.x, pointer.y, 300, 0.055);
       }
       drawGlow(craft.x, craft.y, 170, 0.07);
-      drawGrid(width, height);
+      drawLattice(width, height);
       drawCraft(lure.x, lure.y);
 
       time += 0.016;
