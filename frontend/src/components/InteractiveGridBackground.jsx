@@ -77,17 +77,17 @@ export function InteractiveGridBackground() {
           const cursorInfluence = field.active ? influence(cursorDistance, 310) * field.strength : 0;
           const craftInfluence = influence(craftDistance, 180) * 0.4;
           const wave = Math.sin(time * 1.4 + random * 8 + cursorDistance * 0.018) * 0.5 + 0.5;
-          const pushX = field.active ? (baseX - field.x) / Math.max(cursorDistance, 1) : 0;
-          const pushY = field.active ? (baseY - field.y) / Math.max(cursorDistance, 1) : 0;
+          const pullX = field.active ? (field.x - baseX) / Math.max(cursorDistance, 1) : 0;
+          const pullY = field.active ? (field.y - baseY) / Math.max(cursorDistance, 1) : 0;
           const driftX = Math.sin(time * 0.45 + random * 12) * 1.4;
           const driftY = Math.cos(time * 0.38 + random * 10) * 1.4;
-          const displacement = cursorInfluence * (18 + random * 18);
+          const displacement = cursorInfluence * (10 + random * 12);
 
           points.push({
             baseX,
             baseY,
-            x: baseX + pushX * displacement + driftX,
-            y: baseY + pushY * displacement + driftY,
+            x: baseX + pullX * displacement + driftX,
+            y: baseY + pullY * displacement + driftY,
             energy: cursorInfluence * (0.68 + wave * 0.32) + craftInfluence,
             random,
           });
