@@ -45,14 +45,6 @@ export function InteractiveGridBackground() {
       }
     }
 
-    function seed(x, y) {
-      return Math.abs(Math.sin(x * 12.9898 + y * 78.233) * 43758.5453 % 1);
-    }
-
-    function influence(distance, radius) {
-      return Math.max(0, 1 - distance / radius) ** 2;
-    }
-
     function drawGlow(x, y, radius, opacity) {
       const gradient = context.createRadialGradient(x, y, 0, x, y, radius);
       gradient.addColorStop(0, `rgba(130, 230, 160, ${opacity})`);
@@ -66,64 +58,61 @@ export function InteractiveGridBackground() {
       const gap = 46;
       const points = [];
       context.lineWidth = 1;
+      context.lineCap = "butt";
 
-      for (let x = -gap; x < width + gap * 2; x += gap) {
-        for (let y = -gap; y < height + gap * 2; y += gap) {
-          const random = seed(x, y);
-          const baseX = x + (random - 0.5) * 7;
-          const baseY = y + (seed(y, x) - 0.5) * 7;
+      for (let y = -gap; y < height + gap * 2; y += gap) {
+        const row = [];
+        for (let x = -gap; x < width + gap * 2; x += gap) {
+          const baseX = x;
+          const baseY = y;
           const cursorDistance = Math.hypot(baseX - field.x, baseY - field.y);
-          const craftDistance = Math.hypot(baseX - craft.x, baseY - craft.y);
-          const cursorInfluence = field.active ? influence(cursorDistance, 310) * field.strength : 0;
-          const craftInfluence = influence(craftDistance, 180) * 0.4;
-          const wave = Math.sin(time * 1.4 + random * 8 + cursorDistance * 0.018) * 0.5 + 0.5;
+          const cursorInfluence = field.active
+            ? Math.max(0, 1 - cursorDistance / 300) * field.strength
+            : 0;
           const pullX = field.active ? (field.x - baseX) / Math.max(cursorDistance, 1) : 0;
           const pullY = field.active ? (field.y - baseY) / Math.max(cursorDistance, 1) : 0;
-          const driftX = Math.sin(time * 0.45 + random * 12) * 1.4;
-          const driftY = Math.cos(time * 0.38 + random * 10) * 1.4;
-          const displacement = cursorInfluence * (10 + random * 12);
+          const distanceGate = Math.min(1, cursorDistance / 70);
+          const compression = cursorInfluence * cursorInfluence;
+          const displacement = compression * distanceGate * 26;
+          const energy = compression * (3 - 2 * cursorInfluence);
 
-          points.push({
-            baseX,
-            baseY,
-            x: baseX + pullX * displacement + driftX,
-            y: baseY + pullY * displacement + driftY,
-            energy: cursorInfluence * (0.68 + wave * 0.32) + craftInfluence,
-            random,
+          row.push({
+            x: baseX + pullX * displacement,
+            y: baseY + pullY * displacement,
+            energy,
           });
         }
+        points.push(row);
       }
 
-      for (const point of points) {
-        const right = points.find(
-          (candidate) =>
-            Math.abs(candidate.baseY - point.baseY) < gap * 0.45 &&
-            candidate.baseX > point.baseX &&
-            candidate.baseX - point.baseX < gap * 1.4
-        );
-        const down = points.find(
-          (candidate) =>
-            Math.abs(candidate.baseX - point.baseX) < gap * 0.45 &&
-            candidate.baseY > point.baseY &&
-            candidate.baseY - point.baseY < gap * 1.4
-        );
-        for (const neighbor of [right, down]) {
-          if (!neighbor) continue;
-          const alpha = 0.035 + Math.min(point.energy + neighbor.energy, 1) * 0.18;
-          context.strokeStyle = `rgba(130, 230, 160, ${alpha})`;
-          context.beginPath();
-          context.moveTo(point.x, point.y);
-          context.lineTo(neighbor.x, neighbor.y);
-          context.stroke();
+      for (let rowIndex = 0; rowIndex < points.length; rowIndex += 1) {
+        for (let columnIndex = 0; columnIndex < points[rowIndex].length; columnIndex += 1) {
+          const point = points[rowIndex][columnIndex];
+          const right = points[rowIndex][columnIndex + 1];
+          const down = points[rowIndex + 1]?.[columnIndex];
+
+          for (const neighbor of [right, down]) {
+            if (!neighbor) continue;
+            const lineEnergy = Math.min((point.energy + neighbor.energy) * 0.5, 1);
+            const alpha = 0.035 + lineEnergy * 0.2;
+            context.lineWidth = 0.8 + lineEnergy * 0.55;
+            context.strokeStyle = `rgba(130, 230, 160, ${alpha})`;
+            context.beginPath();
+            context.moveTo(point.x, point.y);
+            context.lineTo(neighbor.x, neighbor.y);
+            context.stroke();
+          }
         }
       }
 
-      for (const point of points) {
-        const radius = 1.1 + point.energy * 2.4;
-        context.fillStyle = `rgba(130, 230, 160, ${0.16 + point.energy * 0.48})`;
-        context.beginPath();
-        context.arc(point.x, point.y, radius, 0, Math.PI * 2);
-        context.fill();
+      for (const row of points) {
+        for (const point of row) {
+          const radius = 1.1 + point.energy * 2.4;
+          context.fillStyle = `rgba(130, 230, 160, ${0.16 + point.energy * 0.48})`;
+          context.beginPath();
+          context.arc(point.x, point.y, radius, 0, Math.PI * 2);
+          context.fill();
+        }
       }
     }
 
@@ -173,7 +162,7 @@ export function InteractiveGridBackground() {
       const chase = pointer.active ? 0.014 : 0.011;
       const fieldTargetX = pointer.active ? pointer.x : craft.x;
       const fieldTargetY = pointer.active ? pointer.y : craft.y;
-      const fieldSpeed = pointer.active ? 0.14 : 0.08;
+      const fieldSpeed = pointer.active ? 0.08 : 0.06;
       const fieldStrength = pointer.active ? 1 : 0;
 
       field.x += (fieldTargetX - field.x) * fieldSpeed;
@@ -186,9 +175,6 @@ export function InteractiveGridBackground() {
       craft.y += (lure.y - craft.y) * chase;
 
       context.clearRect(0, 0, width, height);
-      if (field.active) {
-        drawGlow(field.x, field.y, 300, 0.055 * field.strength);
-      }
       drawGlow(craft.x, craft.y, 170, 0.07);
       drawLattice(width, height);
       drawCraft(lure.x, lure.y);
