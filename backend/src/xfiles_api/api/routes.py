@@ -51,8 +51,13 @@ def ui(app_context: Annotated[AppContext, Depends(context)]) -> dict:
         },
         "navigation": [
             {
+                "value": "home",
+                "label": "Home",
+                "description": "A quiet entry point into the release archive.",
+            },
+            {
                 "value": "archive",
-                "label": "Archive",
+                "label": "Documents",
                 "description": "Search and filter the released records.",
             },
             {

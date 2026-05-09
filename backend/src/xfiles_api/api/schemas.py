@@ -123,7 +123,7 @@ class BrandMetadata(BaseModel):
 class NavigationItem(BaseModel):
     """A public UI section exposed by the archive."""
 
-    value: Literal["archive", "reader", "globe"]
+    value: Literal["home", "archive", "reader", "globe"]
     label: str
     description: str
 

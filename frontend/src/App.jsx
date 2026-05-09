@@ -1,9 +1,11 @@
-import { Archive, BookOpen, Database, Globe2, Search } from "lucide-react";
+import { Archive, BookOpen, Database, Globe2, Home } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { ArchivePage } from "@/components/ArchivePage";
 import { FilterBar } from "@/components/FilterBar";
 import { GlobePage } from "@/components/GlobePage";
+import { InteractiveGridBackground } from "@/components/InteractiveGridBackground";
+import { LandingPage } from "@/components/LandingPage";
 import { ReaderPage } from "@/components/ReaderPage";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +13,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api } from "@/lib/api";
 
 const navigationIcons = {
+  home: Home,
   archive: Archive,
   reader: BookOpen,
   globe: Globe2,
@@ -35,7 +38,7 @@ function metricCards(releases, records, locations) {
 }
 
 export function App() {
-  const [view, setView] = useState("archive");
+  const [view, setView] = useState("home");
   const [interfaceData, setInterfaceData] = useState(null);
   const [releases, setReleases] = useState([]);
   const [records, setRecords] = useState([]);
@@ -119,6 +122,21 @@ export function App() {
           Loading archive interface.
         </div>
       </main>
+    );
+  }
+
+  if (view === "home") {
+    return (
+      <>
+        <InteractiveGridBackground />
+        <LandingPage
+          brand={interfaceData.brand}
+          releases={releases}
+          records={records}
+          locations={locations}
+          onNavigate={setView}
+        />
+      </>
     );
   }
 

@@ -90,8 +90,13 @@ def test_api_exposes_archive_without_storage_internals(tmp_path, monkeypatch):
     assert interface_data["brand"]["name"] == "Disclosure Index"
     assert interface_data["navigation"] == [
         {
+            "value": "home",
+            "label": "Home",
+            "description": "A quiet entry point into the release archive.",
+        },
+        {
             "value": "archive",
-            "label": "Archive",
+            "label": "Documents",
             "description": "Search and filter the released records.",
         },
         {
