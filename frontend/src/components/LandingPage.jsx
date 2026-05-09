@@ -44,7 +44,11 @@ export function LandingPage({ brand, releases, records, locations, onNavigate })
 
             <div className="grid w-full max-w-3xl gap-3 sm:grid-cols-3">
               {stats.map((item) => (
-                <Card key={item.label} size="sm" className="bg-card/60 text-center backdrop-blur">
+                <Card
+                  key={item.label}
+                  size="sm"
+                  className="border-primary/20 bg-card/85 text-center shadow-lg shadow-primary/5 ring-primary/15 backdrop-blur-md transition-all hover:-translate-y-0.5 hover:bg-card hover:shadow-primary/10 hover:ring-primary/30"
+                >
                   <CardHeader>
                     <CardDescription>{item.label}</CardDescription>
                     <CardTitle className="text-3xl md:text-4xl">{item.value}</CardTitle>
@@ -54,15 +58,15 @@ export function LandingPage({ brand, releases, records, locations, onNavigate })
             </div>
 
             <div className="flex flex-wrap justify-center gap-3">
-              <Button size="lg" onClick={() => onNavigate("archive")}>
+              <Button size="lg" className="min-w-40" onClick={() => onNavigate("archive")}>
                 <FileSearch data-icon="inline-start" />
                 Browse documents
               </Button>
-              <Button size="lg" variant="outline" onClick={() => onNavigate("archive")}>
+              <Button size="lg" variant="outline" className="min-w-36" onClick={() => onNavigate("archive")}>
                 <Archive data-icon="inline-start" />
                 View releases
               </Button>
-              <Button size="lg" variant="ghost" onClick={() => onNavigate("globe")}>
+              <Button size="lg" variant="ghost" className="min-w-32" onClick={() => onNavigate("globe")}>
                 <Globe2 data-icon="inline-start" />
                 Open map
               </Button>
