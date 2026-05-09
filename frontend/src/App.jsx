@@ -130,10 +130,8 @@ export function App() {
       <>
         <InteractiveGridBackground />
         <LandingPage
-          brand={interfaceData.brand}
           releases={releases}
           records={records}
-          locations={locations}
           onNavigate={setView}
         />
       </>

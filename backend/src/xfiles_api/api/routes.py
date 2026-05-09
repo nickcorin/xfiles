@@ -42,11 +42,10 @@ def ui(app_context: Annotated[AppContext, Depends(context)]) -> dict:
     """Return public UI metadata and available filter facets."""
     return {
         "brand": {
-            "name": "Disclosure Index",
+            "name": "The Files Are Open",
             "eyebrow": "War.gov UAP release archive",
             "description": (
-                "Preserved source files, searchable text, mapped locations, "
-                "and original provenance."
+                "Preserved files, source links, search, and mapped locations."
             ),
         },
         "navigation": [

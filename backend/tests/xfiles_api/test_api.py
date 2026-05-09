@@ -87,7 +87,7 @@ def test_api_exposes_archive_without_storage_internals(tmp_path, monkeypatch):
     ]
     assert interface.status_code == 200
     interface_data = interface.json()
-    assert interface_data["brand"]["name"] == "Disclosure Index"
+    assert interface_data["brand"]["name"] == "The Files Are Open"
     assert interface_data["navigation"] == [
         {
             "value": "home",
