@@ -29,7 +29,7 @@ function FilterSelect({ value, onChange, placeholder, options }) {
           <SelectItem value="all">{placeholder}</SelectItem>
           {options.map((option) => (
             <SelectItem key={option.value} value={option.value}>
-              {option.label}
+              {option.count ? `${option.label} (${option.count})` : option.label}
             </SelectItem>
           ))}
         </SelectGroup>
@@ -41,28 +41,10 @@ function FilterSelect({ value, onChange, placeholder, options }) {
 export function FilterBar({
   query,
   setQuery,
-  category,
-  setCategory,
-  reviewState,
-  setReviewState,
-  downloadStatus,
-  setDownloadStatus,
-  fileType,
-  setFileType,
-  categories,
-  fileTypes,
+  filters,
+  setFilter,
+  filterGroups,
 }) {
-  const categoryOptions = categories.map((item) => ({ value: item, label: item }));
-  const reviewOptions = [
-    { value: "unreviewed", label: "Unreviewed" },
-    { value: "reviewed", label: "Reviewed" },
-    { value: "follow-up", label: "Follow-up" },
-  ];
-  const downloadOptions = [
-    { value: "downloaded", label: "Downloaded" },
-    { value: "failed", label: "Failed" },
-  ];
-
   return (
     <section className="grid gap-3 rounded-lg border bg-card/80 p-3 shadow-sm backdrop-blur md:grid-cols-[minmax(280px,1fr)_repeat(4,auto)]">
       <label className="relative flex items-center">
@@ -74,10 +56,15 @@ export function FilterBar({
           placeholder="Search records, extracted text, metadata"
         />
       </label>
-      <FilterSelect value={category} onChange={setCategory} placeholder="All categories" options={categoryOptions} />
-      <FilterSelect value={reviewState} onChange={setReviewState} placeholder="All review states" options={reviewOptions} />
-      <FilterSelect value={downloadStatus} onChange={setDownloadStatus} placeholder="All download states" options={downloadOptions} />
-      <FilterSelect value={fileType} onChange={setFileType} placeholder="All file types" options={fileTypes} />
+      {filterGroups.map((group) => (
+        <FilterSelect
+          key={group.value}
+          value={filters[group.value] || ""}
+          onChange={(nextValue) => setFilter(group.value, nextValue)}
+          placeholder={group.placeholder}
+          options={group.options}
+        />
+      ))}
     </section>
   );
 }

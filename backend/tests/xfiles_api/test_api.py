@@ -68,6 +68,7 @@ def test_api_exposes_archive_without_storage_internals(tmp_path, monkeypatch):
         records = client.get("/api/records", params={"q": "infrared"})
         image_records = client.get("/api/records", params={"file_type": "image"})
         file_types = client.get("/api/file-types")
+        interface = client.get("/api/ui")
         failed_records = client.get("/api/records", params={"download_status": "failed"})
         detail = client.get("/api/records/1")
         file_response = client.get("/api/records/1/file")
@@ -83,6 +84,35 @@ def test_api_exposes_archive_without_storage_internals(tmp_path, monkeypatch):
         {"value": "image", "label": "Images", "count": 1},
         {"value": "pdf", "label": "PDF", "count": 1},
         {"value": "text", "label": "Text", "count": 1},
+    ]
+    assert interface.status_code == 200
+    interface_data = interface.json()
+    assert interface_data["brand"]["name"] == "Disclosure Index"
+    assert interface_data["navigation"] == [
+        {
+            "value": "archive",
+            "label": "Archive",
+            "description": "Search and filter the released records.",
+        },
+        {
+            "value": "reader",
+            "label": "Reader",
+            "description": "Review one document at a time.",
+        },
+        {
+            "value": "globe",
+            "label": "Globe",
+            "description": "Browse mapped records by location.",
+        },
+    ]
+    filters = {group["value"]: group for group in interface_data["filters"]}
+    assert filters["file_type"]["options"] == file_types.json()
+    assert filters["review_state"]["options"] == [
+        {"value": "unreviewed", "label": "Unreviewed", "count": 3}
+    ]
+    assert filters["download_status"]["options"] == [
+        {"value": "downloaded", "label": "Downloaded", "count": 2},
+        {"value": "failed", "label": "Failed", "count": 1},
     ]
     assert failed_records.status_code == 200
     assert failed_records.json()[0]["download_status"] == "failed"

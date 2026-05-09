@@ -10,6 +10,7 @@ from xfiles_api.api.schemas import (
     FileTypeOption,
     HealthResponse,
     IngestRequest,
+    InterfaceResponse,
     LocationRecord,
     NoteCreate,
     NoteResponse,
@@ -34,6 +35,39 @@ def context(request: Request) -> AppContext:
 def health() -> HealthResponse:
     """Report API health for containers and deployment checks."""
     return HealthResponse(status="ok")
+
+
+@router.get("/ui", response_model=InterfaceResponse)
+def ui(app_context: Annotated[AppContext, Depends(context)]) -> dict:
+    """Return public UI metadata and available filter facets."""
+    return {
+        "brand": {
+            "name": "Disclosure Index",
+            "eyebrow": "War.gov UAP release archive",
+            "description": (
+                "Preserved source files, searchable text, mapped locations, "
+                "and original provenance."
+            ),
+        },
+        "navigation": [
+            {
+                "value": "archive",
+                "label": "Archive",
+                "description": "Search and filter the released records.",
+            },
+            {
+                "value": "reader",
+                "label": "Reader",
+                "description": "Review one document at a time.",
+            },
+            {
+                "value": "globe",
+                "label": "Globe",
+                "description": "Browse mapped records by location.",
+            },
+        ],
+        "filters": app_context.archive_store.filter_groups(),
+    }
 
 
 @router.post("/ingest", response_model=ReleaseResponse)

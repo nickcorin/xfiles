@@ -3,6 +3,7 @@
 import json
 import re
 import sqlite3
+from collections import Counter
 from collections.abc import Iterable
 from typing import Any
 
@@ -231,6 +232,85 @@ class SQLiteArchiveStore:
             {"value": value, "label": label, "count": count}
             for value, label, count in options
             if count > 0
+        ]
+
+    def filter_groups(self) -> list[dict[str, Any]]:
+        """Return the filter groups currently available in the archive."""
+        return [
+            {
+                "value": "category",
+                "label": "Category",
+                "placeholder": "All categories",
+                "options": self.category_options(),
+            },
+            {
+                "value": "review_state",
+                "label": "Review",
+                "placeholder": "All review states",
+                "options": self._column_options(
+                    "review_state",
+                    labels={
+                        "unreviewed": "Unreviewed",
+                        "reviewed": "Reviewed",
+                        "follow-up": "Follow-up",
+                    },
+                ),
+            },
+            {
+                "value": "download_status",
+                "label": "Download",
+                "placeholder": "All download states",
+                "options": self._column_options(
+                    "download_status",
+                    labels={
+                        "downloaded": "Downloaded",
+                        "failed": "Failed",
+                    },
+                ),
+            },
+            {
+                "value": "file_type",
+                "label": "File type",
+                "placeholder": "All file types",
+                "options": self.file_types(),
+            },
+        ]
+
+    def category_options(self) -> list[dict[str, Any]]:
+        """Return category filters that exist in source records."""
+        rows = self._database.connection.execute(
+            "SELECT categories_json FROM source_records"
+        ).fetchall()
+        counts: Counter[str] = Counter()
+        for row in rows:
+            counts.update(json.loads(row["categories_json"]))
+        return [
+            {"value": value, "label": value, "count": count}
+            for value, count in sorted(counts.items())
+        ]
+
+    def _column_options(
+        self,
+        column: str,
+        *,
+        labels: dict[str, str],
+    ) -> list[dict[str, Any]]:
+        rows = self._database.connection.execute(
+            f"""
+            SELECT {column} AS value, COUNT(*) AS count
+            FROM source_records
+            GROUP BY {column}
+            ORDER BY {column}
+            """
+        ).fetchall()
+        return [
+            {
+                "value": row["value"],
+                "label": labels.get(row["value"], str(row["value"]).replace("-", " ").title()),
+                "count": int(row["count"]),
+            }
+            for row in rows
+            if row["value"]
         ]
 
     def _file_type_count(self, file_type: str) -> int:

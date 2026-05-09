@@ -95,6 +95,47 @@ class FileTypeOption(BaseModel):
     count: int
 
 
+class FilterOption(BaseModel):
+    """A selectable filter value currently available in the archive."""
+
+    value: str
+    label: str
+    count: int
+
+
+class FilterGroup(BaseModel):
+    """A frontend filter group driven by API data."""
+
+    value: str
+    label: str
+    placeholder: str
+    options: list[FilterOption]
+
+
+class BrandMetadata(BaseModel):
+    """Public-facing site identity for the archive UI."""
+
+    name: str
+    eyebrow: str
+    description: str
+
+
+class NavigationItem(BaseModel):
+    """A public UI section exposed by the archive."""
+
+    value: Literal["archive", "reader", "globe"]
+    label: str
+    description: str
+
+
+class InterfaceResponse(BaseModel):
+    """Read-only metadata used to render the public frontend."""
+
+    brand: BrandMetadata
+    navigation: list[NavigationItem]
+    filters: list[FilterGroup]
+
+
 class RecordAnalysisUpdate(BaseModel):
     """Editable analysis fields for a source record."""
 
