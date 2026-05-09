@@ -13,6 +13,12 @@ export function InteractiveGridBackground() {
       x: window.innerWidth * 0.62,
       y: window.innerHeight * 0.36,
     };
+    const field = {
+      active: false,
+      strength: 0,
+      x: pointer.x,
+      y: pointer.y,
+    };
     const lure = { x: pointer.x, y: pointer.y };
     const craft = { x: pointer.x, y: pointer.y };
     let animationFrame = 0;
@@ -66,13 +72,13 @@ export function InteractiveGridBackground() {
           const random = seed(x, y);
           const baseX = x + (random - 0.5) * 7;
           const baseY = y + (seed(y, x) - 0.5) * 7;
-          const cursorDistance = Math.hypot(baseX - pointer.x, baseY - pointer.y);
+          const cursorDistance = Math.hypot(baseX - field.x, baseY - field.y);
           const craftDistance = Math.hypot(baseX - craft.x, baseY - craft.y);
-          const cursorInfluence = pointer.active ? influence(cursorDistance, 310) : 0;
+          const cursorInfluence = field.active ? influence(cursorDistance, 310) * field.strength : 0;
           const craftInfluence = influence(craftDistance, 180) * 0.4;
           const wave = Math.sin(time * 1.4 + random * 8 + cursorDistance * 0.018) * 0.5 + 0.5;
-          const pushX = pointer.active ? (baseX - pointer.x) / Math.max(cursorDistance, 1) : 0;
-          const pushY = pointer.active ? (baseY - pointer.y) / Math.max(cursorDistance, 1) : 0;
+          const pushX = field.active ? (baseX - field.x) / Math.max(cursorDistance, 1) : 0;
+          const pushY = field.active ? (baseY - field.y) / Math.max(cursorDistance, 1) : 0;
           const driftX = Math.sin(time * 0.45 + random * 12) * 1.4;
           const driftY = Math.cos(time * 0.38 + random * 10) * 1.4;
           const displacement = cursorInfluence * (18 + random * 18);
@@ -165,15 +171,23 @@ export function InteractiveGridBackground() {
       const targetY = pointer.active ? pointer.y + imprecisionY : orbitY;
       const lureSpeed = pointer.active ? 0.028 : 0.018;
       const chase = pointer.active ? 0.014 : 0.011;
+      const fieldTargetX = pointer.active ? pointer.x : craft.x;
+      const fieldTargetY = pointer.active ? pointer.y : craft.y;
+      const fieldSpeed = pointer.active ? 0.14 : 0.08;
+      const fieldStrength = pointer.active ? 1 : 0;
 
+      field.x += (fieldTargetX - field.x) * fieldSpeed;
+      field.y += (fieldTargetY - field.y) * fieldSpeed;
+      field.strength += (fieldStrength - field.strength) * 0.12;
+      field.active = field.strength > 0.01;
       lure.x += (targetX - lure.x) * lureSpeed;
       lure.y += (targetY - lure.y) * lureSpeed;
       craft.x += (lure.x - craft.x) * chase;
       craft.y += (lure.y - craft.y) * chase;
 
       context.clearRect(0, 0, width, height);
-      if (pointer.active) {
-        drawGlow(pointer.x, pointer.y, 300, 0.055);
+      if (field.active) {
+        drawGlow(field.x, field.y, 300, 0.055 * field.strength);
       }
       drawGlow(craft.x, craft.y, 170, 0.07);
       drawLattice(width, height);
